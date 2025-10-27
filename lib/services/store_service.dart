@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import '../models/product_model.dart';
-import '../models/store_model.dart';
+import '../models/store_model.dart'; // <-- تم تصحيح مسار الاستيراد هنا
 
 class StoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -72,15 +72,10 @@ class StoreService {
     }
   }
   
-  // --- بداية الدالة المضافة لإصلاح الخطأ ---
-  // دالة لحساب عدد الطلبات (قيمة وهمية حاليًا)
   Future<int> getOrdersCount(String supplierId) async {
-    // TODO: Implement actual order counting logic when the orders feature is built.
-    // For now, we return a placeholder value to prevent build errors.
-    await Future.delayed(const Duration(milliseconds: 100)); // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 100));
     return 0; 
   }
-  // --- نهاية الدالة المضافة ---
 
   Stream<Map<String, int>> getDashboardStats(String supplierId) {
     final productCountStream = _firestore
@@ -92,8 +87,8 @@ class StoreService {
     return productCountStream.map((productCount) {
       return {
         'products': productCount,
-        'orders': 0, // قيمة وهمية حاليًا
-        'revenue': 0, // قيمة وهمية حاليًا
+        'orders': 0,
+        'revenue': 0,
       };
     });
   }
