@@ -1,7 +1,7 @@
 // lib/screens/auth/register_screen.dart
 
-import 'dart-async';
-import 'dart:io'; // <-- إعادة إضافة المكتبة المفقودة
+import 'dart:async'; // <-- تصحيح الخطأ الإملائي هنا
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
