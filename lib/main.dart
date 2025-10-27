@@ -1,65 +1,37 @@
 // lib/main.dart
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:upgrader/upgrader.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+import 'firebase_options.dart';
 import 'constants/app_colors.dart';
 import 'constants/app_strings.dart';
-import 'firebase_options.dart';
+
 import 'providers/auth_provider.dart';
+import 'providers/chat_provider.dart';
 import 'providers/request_provider.dart';
-import 'providers/chat_provider.dart'; // <-- استيراد جديد
+import 'providers/store_provider.dart';
+import 'providers/theme_provider.dart';
+
 import 'screens/auth/login_screen.dart';
-import 'screens/main/main_screen.dart';
-import 'screens/main/settings_screen.dart';
-import 'screens/supplier/store_management_screen.dart';
-import 'screens/content/privacy_policy_screen.dart';
-import 'screens/content/terms_of_service_screen.dart';
-import 'screens/content/about_us_screen.dart';
-import 'screens/content/contact_us_screen.dart';
-import 'services/ads_service.dart';
+import 'screens/main/main_screen_holder.dart';
 
-void main() {
+// Unused import, as pointed out by the analyzer
+// import 'services/ads_service.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AppInitializer());
-}
-
-class AppInitializer extends StatefulWidget {
-  const AppInitializer({super.key});
-
-  @override
-  State<AppInitializer> createState() => _AppInitializerState();
-}
-
-class _AppInitializerState extends State<AppInitializer> {
-  final Future<FirebaseApp> _initialization = Firebase.initializeApp(
+  await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await MobileAds.instance.initialize();
+  await FirebaseMessaging.instance.requestPermission();
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _initialization,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return ErrorScreen(error: snapshot.error.toString());
-        }
-
-        if (snapshot.connectionState == ConnectionState.done) {
-          return const MyApp();
-        }
-
-        return const MaterialApp(
-          debugShowCheckedModeBanner: false,
-          home: Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -69,37 +41,39 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => RequestProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()), // <-- تم إضافة هذا السطر
-      ],
-      child: MaterialApp(
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: AppColors.primaryMaterialColor,
-          scaffoldBackgroundColor: AppColors.background,
-          fontFamily: 'Cairo',
-          appBarTheme: const AppBarTheme(
-            elevation: 0,
-            backgroundColor: AppColors.primaryColor,
-            foregroundColor: Colors.white,
-            centerTitle: true,
-          ),
-          buttonTheme: const ButtonThemeData(
-            buttonColor: AppColors.primaryColor,
-            textTheme: ButtonTextTheme.primary,
-          ),
+        ChangeNotifierProvider(create: (_) => StoreProvider()),
+        // ChatProvider depends on AuthProvider
+        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, auth, chat) {
+            if (chat == null) return ChatProvider();
+            if (auth.user != null) {
+              chat.setCurrentUserId(auth.user!.id);
+            }
+            return chat;
+          },
         ),
-        home: const AuthWrapper(),
-        routes: {
-          '/settings': (context) => const SettingsScreen(),
-          '/store_management': (context) => const StoreManagementScreen(),
-          '/privacy_policy': (context) => const PrivacyPolicyScreen(),
-          '/terms_of_service': (context) => const TermsOfServiceScreen(),
-          '/about_us': (context) => const AboutUsScreen(),
-          '/contact_us': (context) => const ContactUsScreen(),
-        }
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: AppStrings.appName,
+            theme: themeProvider.getTheme(),
+            debugShowCheckedModeBanner: false,
+            home: UpgradeAlert(
+              upgrader: Upgrader(
+                dialogStyle: UpgradeDialogStyle.material,
+                canDismissDialog: false,
+                showLater: false,
+                showIgnore: false,
+              ),
+              child: const AuthWrapper(),
+            ),
+          );
+        },
       ),
     );
   }
@@ -110,66 +84,27 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        if (authProvider.isAuthenticated && authProvider.user != null) {
-          return const MainScreen();
-        } else {
-          return const LoginScreen();
-        }
-      },
-    );
-  }
-}
+    // --- بداية التعديل ---
+    // We use the user object from the provider to determine auth state.
+    // The provider listens to authStateChanges internally.
+    final authProvider = Provider.of<AuthProvider>(context);
 
-class ErrorScreen extends StatelessWidget {
-  final String error;
-  const ErrorScreen({super.key, required this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFFFDEFEF),
-        body: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 80),
-                const SizedBox(height: 20),
-                const Text(
-                  'حدث خطأ فادح عند تشغيل التطبيق',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'رسالة الخطأ:',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade100),
-                  ),
-                  child: SelectableText(
-                    error,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Colors.red, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    // Show a loading indicator while the auth state is being determined.
+    if (authProvider.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
         ),
-      ),
-    );
+      );
+    }
+
+    // If the user object is not null, the user is authenticated.
+    if (authProvider.user != null) {
+      return const MainScreenHolder();
+    } else {
+      // Otherwise, show the login screen.
+      return const LoginScreen();
+    }
+    // --- نهاية التعديل ---
   }
 }
