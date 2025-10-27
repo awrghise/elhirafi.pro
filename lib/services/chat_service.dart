@@ -1,5 +1,91 @@
-// ... (باقي الكود كما هو)
+// lib/services/chat_service.dart
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/chat_model.dart';
+import '../models/message_model.dart';
+
+class ChatService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Stream<ChatModel> getChatDetails(String chatId) {
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .snapshots()
+        .map((doc) => ChatModel.fromFirestore(doc));
+  }
+
+  // --- بداية التعديل 2: إضافة الدالة المفقودة ---
+  Stream<List<ChatModel>> getUserChatsPaginated({
+    required String userId,
+    required int limit,
+    DocumentSnapshot? startAfter,
+  }) {
+    Query query = _firestore
+        .collection('chats')
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    return query.snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
+  }
+  // --- نهاية التعديل 2 ---
+
+  Stream<List<MessageModel>> getChatMessages(String chatId) {
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => MessageModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<void> sendMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String content,
+    required MessageType type,
+  }) async {
+    try {
+      final message = MessageModel(
+        id: _firestore.collection('chats').doc(chatId).collection('messages').doc().id,
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        content: content,
+        type: type,
+        timestamp: DateTime.now(),
+      );
+
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(message.id)
+          .set(message.toFirestore());
+
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessageContent': content,
+        'lastMessageTime': Timestamp.fromDate(message.timestamp),
+        'lastMessageSenderId': senderId,
+        'messageCount': FieldValue.increment(1),
+      });
+    } catch (e) {
+      print('Error sending message: $e');
+      rethrow;
+    }
+  }
+
+  // --- بداية التعديل 1: إضافة أرقام الهواتف ---
   Future<String> getOrCreateChat({
     required String user1Id,
     required String user1Name,
@@ -30,4 +116,5 @@
     }
     return chatId;
   }
-// ... (باقي الكود كما هو)
+  // --- نهاية التعديل 1 ---
+}
