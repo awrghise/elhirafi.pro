@@ -1,3 +1,5 @@
+// lib/screens/main/profile_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
@@ -24,7 +26,7 @@ class ProfileScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await authProvider.signOut(); // <-- تم التصحيح
+              await authProvider.signOut();
             },
           ),
         ],
@@ -42,7 +44,6 @@ class ProfileScreen extends StatelessWidget {
               _buildCraftsmanInfoCard(user),
               const SizedBox(height: 16),
             ],
-            // Add other sections like settings, etc.
           ],
         ),
       ),
@@ -99,13 +100,14 @@ class ProfileScreen extends StatelessWidget {
             const Text(AppStrings.myProfession, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const Divider(height: 20),
             _buildInfoRow(Icons.work, AppStrings.profession, user.professionName ?? AppStrings.notSpecified),
+            _buildInfoRow(Icons.location_city, 'مدينة العمل الأساسية', user.primaryCity ?? AppStrings.notSpecified),
             const SizedBox(height: 12),
-            const Text(AppStrings.myWorkCities, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            const Text('مدن تلقي التنبيهات', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            if (user.workCities.isNotEmpty) // <-- تم التصحيح
+            if (user.alertCities.isNotEmpty)
               Wrap(
                 spacing: 8.0,
-                children: user.workCities.map((city) => Chip(label: Text(city))).toList(),
+                children: user.alertCities.map((city) => Chip(label: Text(city))).toList(),
               )
             else
               const Text(AppStrings.notSpecified),
