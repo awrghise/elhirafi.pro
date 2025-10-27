@@ -1,3 +1,5 @@
+// lib/services/request_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/request_model.dart';
 import '../models/user_model.dart' as user_model;
@@ -5,7 +7,6 @@ import '../models/user_model.dart' as user_model;
 class RequestService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Publish a new request
   Future<void> createRequest(RequestModel request) async {
     try {
       await _firestore.collection('requests').add(request.toFirestore());
@@ -15,26 +16,26 @@ class RequestService {
     }
   }
 
-  // Listen to requests for a craftsman
   Stream<List<RequestModel>> getCraftsmanRequestsStream({
     required String professionName,
-    required List<String> workCities,
+    // --- بداية التعديل ---
+    required List<String> alertCities,
+    // --- نهاية التعديل ---
   }) {
-    // Craftsmen should see requests that match their profession and are in their work cities
     return _firestore
         .collection('requests')
         .where('professionName', isEqualTo: professionName)
-        .where('city', whereIn: workCities)
-        .where('status', isEqualTo: 'pending') // Only show pending requests
+        // --- بداية التعديل ---
+        .where('city', whereIn: alertCities)
+        // --- نهاية التعديل ---
+        .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => RequestModel.fromFirestore(doc)).toList();
     });
   }
 
-  // Listen to requests for a client
   Stream<List<RequestModel>> getClientRequestsStream({required String clientId}) {
-    // Clients should see all requests they have created
     return _firestore
         .collection('requests')
         .where('clientId', isEqualTo: clientId)
@@ -51,7 +52,7 @@ class RequestService {
         'status': 'accepted',
         'craftsmanId': craftsman.id,
         'craftsmanName': craftsman.name,
-        'craftsmanPhone': craftsman.phoneNumber, // <-- تم التصحيح
+        'craftsmanPhone': craftsman.phoneNumber,
       });
     } catch (e) {
       print('Error accepting request: $e');
