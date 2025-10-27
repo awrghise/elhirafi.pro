@@ -2,11 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatModel {
   final String id;
-  final List<String> participants; // UIDs of participants
-  final Map<String, dynamic> participantNames; // Map of UID to name
+  final List<String> participants;
+  final Map<String, dynamic> participantNames;
   final DateTime lastMessageTime;
   final String lastMessageContent;
   final String lastMessageSenderId;
+  final int messageCount; // <-- الحقل الجديد
 
   ChatModel({
     required this.id,
@@ -15,6 +16,7 @@ class ChatModel {
     required this.lastMessageTime,
     required this.lastMessageContent,
     required this.lastMessageSenderId,
+    this.messageCount = 0, // <-- القيمة الافتراضية
   });
 
   factory ChatModel.fromFirestore(DocumentSnapshot doc) {
@@ -26,6 +28,7 @@ class ChatModel {
       lastMessageTime: (data['lastMessageTime'] as Timestamp).toDate(),
       lastMessageContent: data['lastMessageContent'] ?? '',
       lastMessageSenderId: data['lastMessageSenderId'] ?? '',
+      messageCount: data['messageCount'] ?? 0, // <-- قراءة الحقل الجديد
     );
   }
 
@@ -36,8 +39,7 @@ class ChatModel {
       'lastMessageTime': Timestamp.fromDate(lastMessageTime),
       'lastMessageContent': lastMessageContent,
       'lastMessageSenderId': lastMessageSenderId,
+      'messageCount': messageCount, // <-- إضافة الحقل الجديد
     };
   }
 }
-
-
