@@ -8,8 +8,10 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/chat_provider.dart'; // <-- استيراد جديد
 import '../../data/professions_data.dart';
 import '../../data/cities_data.dart';
+import '../chat/chat_detail_screen.dart'; // <-- استيراد جديد
 
 class AvailableCraftsmenScreen extends StatefulWidget {
   const AvailableCraftsmenScreen({super.key});
@@ -151,10 +153,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     const DropdownMenuItem(value: null, child: Text('جميع المهن')),
                     ...ProfessionsData().getAllProfessions().map((profession) {
                       return DropdownMenuItem(
-                        // --- بداية التعديل ---
                         value: profession.getNameByDialect('AR'),
                         child: Text(profession.getNameByDialect('AR')),
-                        // --- نهاية التعديل ---
                       );
                     }),
                   ],
@@ -235,19 +235,22 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     );
   }
 
+  // --- بداية الكود المعدل ---
   Widget _buildCraftsmanCard(UserModel craftsman, bool isClient) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primaryColor,
+                  radius: 28,
+                  backgroundColor: AppColors.primaryColor.withOpacity(0.1),
                   backgroundImage: craftsman.profileImageUrl.isNotEmpty
                       ? NetworkImage(craftsman.profileImageUrl)
                       : null,
@@ -255,14 +258,14 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                       ? Text(
                           craftsman.name.isNotEmpty ? craftsman.name[0].toUpperCase() : 'U',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.primaryColor,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +273,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                       Text(
                         craftsman.name,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -279,47 +282,54 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                         craftsman.professionName ?? 'حرفي',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: Colors.grey[700],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              craftsman.workCities.join(', '),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            const Divider(height: 20),
+            
+            if (craftsman.workCities.isNotEmpty)
+              Wrap(
+                spacing: 6.0,
+                runSpacing: 4.0,
+                children: craftsman.workCities.map((city) => Chip(
+                  label: Text(city, style: const TextStyle(fontSize: 11)),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  backgroundColor: Colors.grey[200],
+                )).toList(),
+              ),
+            
             const SizedBox(height: 16),
+
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: isClient ? () => _contactCraftsman(craftsman) : null,
-                    icon: const Icon(Icons.chat, size: 18),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('محادثة'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                      foregroundColor: AppColors.primaryColor,
+                      elevation: 0,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: isClient ? () => _callCraftsman(craftsman) : null,
-                    icon: const Icon(Icons.phone, size: 18),
+                    icon: const Icon(Icons.phone_outlined, size: 16),
                     label: const Text('اتصال'),
+                     style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                      foregroundColor: AppColors.primaryColor,
+                      elevation: 0,
+                    ),
                   ),
                 ),
               ],
@@ -330,10 +340,52 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     );
   }
 
-  void _contactCraftsman(UserModel craftsman) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('المحادثة قريباً')),
+  void _contactCraftsman(UserModel craftsman) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final currentUser = authProvider.user;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب تسجيل الدخول أولاً')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final chatId = await chatProvider.getOrCreateChat(
+        user1Id: currentUser.id,
+        user1Name: currentUser.name,
+        user2Id: craftsman.id,
+        user2Name: craftsman.name,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ChatDetailScreen(
+              chatId: chatId,
+              otherUserName: craftsman.name,
+              otherUserId: craftsman.id,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في بدء المحادثة: $e')),
+        );
+      }
+    }
   }
 
   void _callCraftsman(UserModel craftsman) async {
@@ -348,4 +400,5 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       }
     }
   }
+  // --- نهاية الكود المعدل ---
 }
