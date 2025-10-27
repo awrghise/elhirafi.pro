@@ -22,13 +22,25 @@ class _ChatsScreenState extends State<ChatsScreen> {
   @override
   void initState() {
     super.initState();
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.loadInitialChats();
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
-        chatProvider.loadMoreChats();
+    // --- بداية التعديل ---
+    // تأكد من أن المستخدم قد تم تحميله قبل استدعاء أي شيء
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.user != null) {
+        final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+        // ربط الـ Provider بالمستخدم الحالي لبدء تحميل المحادثات
+        chatProvider.setCurrentUserId(authProvider.user!.id);
       }
     });
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
+        // ملاحظة: دالة loadMoreChats معقدة مع الـ streams، لذا قد لا تعمل كما هو متوقع الآن.
+        // سنتركها للمستقبل إذا احتجنا لتحسين الترقيم.
+        // Provider.of<ChatProvider>(context, listen: false).loadMoreChats();
+      }
+    });
+    // --- نهاية التعديل ---
   }
 
   @override
@@ -64,7 +76,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
           return ListView.builder(
             controller: _scrollController,
-            itemCount: chatProvider.chats.length + (chatProvider.hasMore ? 1 : 0),
+            itemCount: chatProvider.chats.length + (chatProvider.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
               if (index == chatProvider.chats.length) {
                 return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
@@ -74,9 +86,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
               final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
               final otherUserId = chat.participants.firstWhere((id) => id != currentUser?.id, orElse: () => '');
               final otherUserName = chat.participantNames[otherUserId] ?? 'مستخدم غير معروف';
-              // --- بداية التعديل: الهدف 1 ---
               final otherUserPhone = chat.participantPhones[otherUserId] ?? '';
-              // --- نهاية التعديل ---
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -99,19 +109,23 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChatDetailScreen(
-                          chatId: chat.id,
-                          otherUserId: otherUserId,
-                          otherUserName: otherUserName,
-                          // --- بداية التعديل: الهدف 2 ---
-                          otherUserPhone: otherUserPhone,
-                          // --- نهاية التعديل ---
+                    if (otherUserPhone.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatDetailScreen(
+                            chatId: chat.id,
+                            otherUserId: otherUserId,
+                            otherUserName: otherUserName,
+                            otherUserPhone: otherUserPhone,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('خطأ: رقم هاتف المستخدم الآخر غير متوفر.'))
+                      );
+                    }
                   },
                 ),
               );
