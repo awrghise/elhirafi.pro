@@ -2,29 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../models/user_model.dart';
-import '../content/privacy_policy_screen.dart';
-import '../content/about_us_screen.dart';
-import '../content/contact_us_screen.dart';
-import '../auth/register_screen.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  final bool _isDarkMode = false;
-  final String _appVersion = '1.0.0';
 
   @override
   Widget build(BuildContext context) {
@@ -36,417 +24,237 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text(AppStrings.settings),
         backgroundColor: AppColors.primaryColor,
       ),
-      // --- بداية التعديل: ضمان اتجاه الشاشة من اليمين لليسار ---
-      body: Directionality(
-        textDirection: TextDirection.rtl,
-        child: ListView(
+      body: SingleChildScrollView(
+        child: Column(
           children: [
-            if (user != null) ...[
-              _buildSectionHeader(AppStrings.currentMode),
-              _buildModeCard(user, authProvider),
-              const Divider(height: 32),
-            ],
-
-            _buildSectionHeader(AppStrings.settings),
-            _buildLanguageDropdown(),
-            _buildSwitchTile(
-              icon: Icons.dark_mode,
-              title: AppStrings.darkMode,
-              value: _isDarkMode,
-              onChanged: (value) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('الوضع الليلي غير متاح حاليًا')),
-                );
-              },
-            ),
-            _buildSettingsTile(
-              icon: Icons.notifications,
-              title: AppStrings.notifications,
-              onTap: () async {
-                await openAppSettings();
-              },
-            ),
-            const Divider(height: 32),
-
-            _buildSectionHeader('القانونية والمعلومات'),
-            _buildSettingsTile(
-              icon: Icons.privacy_tip,
-              title: AppStrings.privacyPolicy,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PrivacyPolicyScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildSettingsTile(
-              icon: Icons.info,
-              title: AppStrings.aboutUs,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AboutUsScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildSettingsTile(
-              icon: Icons.contact_support,
-              title: AppStrings.contactUs,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ContactUsScreen(),
-                  ),
-                );
-              },
-            ),
-            const Divider(height: 32),
-
-            _buildSectionHeader('مشاركة وتقييم التطبيق'),
-            _buildSettingsTile(
-              icon: Icons.share,
-              title: AppStrings.shareApp,
-              onTap: () => _shareApp(),
-            ),
-            _buildSettingsTile(
-              icon: Icons.star,
-              title: AppStrings.rateApp,
-              onTap: () => _rateApp(),
-            ),
-            const Divider(height: 32),
-
-            if (user != null) ...[
-              _buildSectionHeader(AppStrings.accountType),
-              _buildSettingsTile(
-                icon: Icons.edit,
-                title: AppStrings.editProfile,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RegisterScreen(
-                        isEditing: true,
-                        userToEdit: user,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildSettingsTile(
-                icon: Icons.logout,
-                title: AppStrings.logout,
-                textColor: AppColors.errorColor,
-                onTap: () => _showLogoutDialog(authProvider),
-              ),
-              _buildSettingsTile(
-                icon: Icons.delete_forever,
-                title: AppStrings.deleteAccount,
-                textColor: AppColors.errorColor,
-                onTap: () => _showDeleteAccountDialog(authProvider),
-              ),
-            ],
-
-            const SizedBox(height: 32),
-            Center(
-              child: Text(
-                '${AppStrings.version} $_appVersion',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 16),
+            if (user != null) _buildUserTypeSwitcher(context, user),
+            _buildThemeSwitcher(context),
+            const Divider(),
+            _buildInfoSection(context),
+            const Divider(),
+            _buildActionButtons(context),
           ],
         ),
       ),
-      // --- نهاية التعديل ---
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: AppColors.primaryColor,
-        ),
-      ),
-    );
-  }
+  Widget _buildUserTypeSwitcher(BuildContext context, UserModel user) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-  Widget _buildModeCard(UserModel user, AuthProvider authProvider) {
-    String currentModeText = '';
-    IconData currentModeIcon = Icons.person;
-
-    switch (user.userType) {
-      case 'client':
-        currentModeText = AppStrings.clientMode;
-        currentModeIcon = Icons.person;
-        break;
-      case 'craftsman':
-        currentModeText = AppStrings.craftsmanMode;
-        currentModeIcon = Icons.construction;
-        break;
-      case 'supplier':
-        currentModeText = AppStrings.supplierMode;
-        currentModeIcon = Icons.store;
-        break;
+    // Only show the switcher if the user is a craftsman or a supplier
+    if (user.userType != AppStrings.craftsman && user.userType != AppStrings.supplier) {
+      return const SizedBox.shrink();
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.all(16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'تبديل وضع الحساب',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'يمكنك التبديل بين حسابك كـ"${AppStrings.client}" (لطلب الخدمات) وحسابك كـ"${user.userType}" (لعرض خدماتك).',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Icon(currentModeIcon, color: AppColors.primaryColor, size: 32),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        currentModeText,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        user.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
+                _buildUserTypeOption(
+                  context,
+                  'أنا زبون',
+                  AppStrings.client,
+                  user.userType == AppStrings.client,
+                  () => authProvider.updateUserType(AppStrings.client),
+                ),
+                _buildUserTypeOption(
+                  context,
+                  'أنا ${user.userType}',
+                  user.userType,
+                  user.userType != AppStrings.client,
+                  () => authProvider.updateUserType(user.userType),
                 ),
               ],
-            ),
-            if (user.userType != 'supplier') ...[
-              const SizedBox(height: 16),
-              // --- بداية تعديل القائمة المنسدلة ---
-              DropdownButtonFormField<String>(
-                value: user.userType,
-                decoration: const InputDecoration(
-                  labelText: 'التحويل إلى',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                ),
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'client',
-                    child: Text('وضع العميل'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'craftsman',
-                    child: Text('وضع الحرفي'),
-                  ),
-                ],
-                onChanged: (newValue) {
-                  if (newValue != null && newValue != user.userType) {
-                    _switchMode(newValue, authProvider);
-                  }
-                },
-              ),
-              // --- نهاية تعديل القائمة المنسدلة ---
-            ],
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Color? textColor,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: textColor ?? AppColors.primaryColor),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w500,
+  Widget _buildUserTypeOption(
+      BuildContext context, String title, String type, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primaryColor : Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-      subtitle: subtitle != null ? Text(subtitle) : null,
-      trailing: const Icon(Icons.chevron_right),
+    );
+  }
+
+  Widget _buildThemeSwitcher(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return ListTile(
+          leading: const Icon(Icons.brightness_6),
+          title: const Text('الوضع الداكن'),
+          trailing: Switch(
+            value: themeProvider.isDarkMode,
+            onChanged: (value) {
+              themeProvider.toggleTheme(value);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoSection(BuildContext context) {
+    return Column(
+      children: [
+        _buildInfoTile(
+          context,
+          icon: Icons.description_outlined,
+          title: 'شروط الاستخدام',
+          onTap: () => _launchURL('https://elhirafi.pro/terms'),
+        ),
+        _buildInfoTile(
+          context,
+          icon: Icons.privacy_tip_outlined,
+          title: 'سياسة الخصوصية',
+          onTap: () => _launchURL('https://elhirafi.pro/privacy'),
+        ),
+        _buildInfoTile(
+          context,
+          icon: Icons.info_outline,
+          title: 'عن التطبيق',
+          onTap: () {
+            showAboutDialog(
+              context: context,
+              applicationName: AppStrings.appName,
+              applicationVersion: '1.0.0', // Replace with dynamic version later
+              applicationLegalese: '© 2024 Elhirafi.pro. All rights reserved.',
+              children: [
+                const SizedBox(height: 16),
+                const Text('تطبيق لمساعدة المستخدمين في العثور على حرفيين وخدمات.'),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ElevatedButton.icon(
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('مشاركة التطبيق'),
+            onPressed: () {
+              Share.share(
+                'تحقق من تطبيق ${AppStrings.appName}! إنه رائع للعثور على حرفيين. \n\nhttps://play.google.com/store/apps/details?id=pro.elhirafi.app',
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              foregroundColor: AppColors.primaryColor,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.primaryColor),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.star_outline),
+            label: const Text('تقييم التطبيق'),
+            onPressed: () => _launchURL('https://play.google.com/store/apps/details?id=pro.elhirafi.app'),
+            style: ElevatedButton.styleFrom(
+              foregroundColor: AppColors.primaryColor,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.primaryColor),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.logout),
+            label: const Text('تسجيل الخروج'),
+            onPressed: () => _confirmSignOut(context),
+            style: ElevatedButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(BuildContext context,
+      {required IconData icon, required String title, required VoidCallback onTap}) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }
 
-  Widget _buildSwitchTile({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryColor),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppColors.primaryColor,
-      ),
-    );
-  }
-
-  Widget _buildLanguageDropdown() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: DropdownButtonFormField<String>(
-        value: 'العربية',
-        decoration: const InputDecoration(
-          labelText: AppStrings.language,
-          icon: Icon(Icons.language, color: AppColors.primaryColor),
-          border: UnderlineInputBorder(),
-        ),
-        // --- بداية تعديل قائمة اللغات ---
-        items: const [
-          DropdownMenuItem(
-            value: 'العربية',
-            child: Text('العربية'),
-          ),
-        ],
-        // --- نهاية تعديل قائمة اللغات ---
-        onChanged: (value) {
-          // لا يوجد إجراء مطلوب لأن العربية هي الخيار الوحيد
-        },
-      ),
-    );
-  }
-
-  void _switchMode(String newMode, AuthProvider authProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(AppStrings.confirm),
-        content: Text('هل تريد التحول إلى ${_getModeText(newMode)}؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(AppStrings.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await authProvider.updateUserType(authProvider.user!.id, newMode);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تغيير الوضع بنجاح')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('فشل تغيير الوضع: ${e.toString()}')),
-                  );
-                }
-              }
-            },
-            child: const Text(AppStrings.confirm),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getModeText(String type) {
-    switch (type) {
-      case 'client':
-        return AppStrings.clientMode;
-      case 'craftsman':
-        return AppStrings.craftsmanMode;
-      case 'supplier':
-        return AppStrings.supplierMode;
-      default:
-        return '';
+  void _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      // Could not launch the URL
     }
   }
 
-  void _shareApp() {
-    Share.share(
-      'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
-    );
-  }
-
-  void _rateApp() async {
-    final url = Uri.parse(
-        'https://play.google.com/store/apps/details?id=com.elsane3.app');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  void _showLogoutDialog(AuthProvider authProvider) {
+  void _confirmSignOut(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(AppStrings.logout),
-        content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(AppStrings.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await authProvider.signOut();
-              if (mounted) {
-                Navigator.of(context)
-                    .popUntil((route) => route.isFirst);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorColor),
-            child: const Text(AppStrings.logout),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteAccountDialog(AuthProvider authProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(AppStrings.deleteAccount),
-        content: const Text(AppStrings.confirmDeleteAccount),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(AppStrings.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('وظيفة حذف الحساب قيد التطوير')),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorColor),
-            child: const Text(AppStrings.delete),
-          ),
-        ],
-      ),
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('تأكيد تسجيل الخروج'),
+          content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
+          actions: [
+            TextButton(
+              child: const Text('إلغاء'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Close the dialog
+                Provider.of<AuthProvider>(context, listen: false).signOut();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
