@@ -2,10 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
-import '../../models/user_model.dart';
-import '../../providers/auth_provider.dart';
+import '../auth/register_screen.dart';
+import '../../models/user_model.dart'; // Import UserModel
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -13,20 +14,27 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
+    final UserModel? user = authProvider.user;
 
     if (user == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(
+        body: Center(child: Text('لم يتم تحميل بيانات المستخدم')),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.profile),
+        backgroundColor: AppColors.primaryColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.signOut();
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => RegisterScreen(isEditing: true, userToEdit: user),
+                ),
+              );
             },
           ),
         ],
@@ -35,99 +43,60 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildProfileHeader(user),
+            Center(
+              child: CircleAvatar(
+                radius: 60,
+                backgroundImage: user.profileImageUrl.isNotEmpty
+                    ? NetworkImage(user.profileImageUrl)
+                    : null,
+                child: user.profileImageUrl.isEmpty
+                    ? Text(
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontSize: 48, color: Colors.white),
+                      )
+                    : null,
+                backgroundColor: AppColors.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(user.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(user.email, style: const TextStyle(fontSize: 16, color: Colors.grey)),
             const SizedBox(height: 24),
             const Divider(),
-            _buildProfileInfoCard(user),
-            const SizedBox(height: 16),
+            _buildInfoTile(Icons.phone, 'رقم الهاتف', user.phoneNumber),
+            _buildInfoTile(Icons.person_outline, 'نوع الحساب', user.userType),
             if (user.userType == AppStrings.craftsman) ...[
-              _buildCraftsmanInfoCard(user),
-              const SizedBox(height: 16),
+              _buildInfoTile(Icons.work, 'المهنة', user.professionName ?? 'غير محدد'),
+              // --- بداية التعديل ---
+              _buildInfoTile(Icons.location_city, 'مدينة العمل الأساسية', user.primaryWorkCity ?? 'غير محدد'),
+              // --- نهاية التعديل ---
+              _buildInfoTile(Icons.notifications_active, 'مدن التنبيهات', user.alertCities.join(', ')),
             ],
+            const Divider(),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Provider.of<AuthProvider>(context, listen: false).signOut();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('تسجيل الخروج'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(UserModel user) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundImage: user.profileImageUrl.isNotEmpty
-              ? NetworkImage(user.profileImageUrl)
-              : null,
-          child: user.profileImageUrl.isEmpty
-              ? const Icon(Icons.person, size: 50)
-              : null,
-        ),
-        const SizedBox(height: 12),
-        Text(user.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        Text(user.email, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-      ],
-    );
-  }
-
-  Widget _buildProfileInfoCard(UserModel user) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(AppStrings.clientInfo, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Divider(height: 20),
-            _buildInfoRow(Icons.phone, AppStrings.phone, user.phoneNumber),
-            _buildInfoRow(Icons.account_circle, AppStrings.accountType, user.userType),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCraftsmanInfoCard(UserModel user) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(AppStrings.myProfession, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Divider(height: 20),
-            _buildInfoRow(Icons.work, AppStrings.profession, user.professionName ?? AppStrings.notSpecified),
-            _buildInfoRow(Icons.location_city, 'مدينة العمل الأساسية', user.primaryCity ?? AppStrings.notSpecified),
-            const SizedBox(height: 12),
-            const Text('مدن تلقي التنبيهات', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            if (user.alertCities.isNotEmpty)
-              Wrap(
-                spacing: 8.0,
-                children: user.alertCities.map((city) => Chip(label: Text(city))).toList(),
-              )
-            else
-              const Text(AppStrings.notSpecified),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primaryColor),
-          const SizedBox(width: 16),
-          Text('$title: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(child: Text(value, textAlign: TextAlign.end)),
-        ],
-      ),
+  Widget _buildInfoTile(IconData icon, String title, String subtitle) {
+    if (subtitle.isEmpty) return const SizedBox.shrink();
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primaryColor),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 16)),
     );
   }
 }
