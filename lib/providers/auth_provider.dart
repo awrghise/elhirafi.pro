@@ -1,6 +1,7 @@
 // lib/providers/auth_provider.dart
 
-import 'dart.io';
+import 'dart:async'; // <-- إعادة إضافة المكتبة المفقودة
+import 'dart:io'; // <-- إعادة إضافة المكتبة المفقودة
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../models/user_model.dart';
 import '../constants/app_strings.dart';
 
+// ... باقي الكود يبقى كما هو بدون أي تغيير ...
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -175,7 +177,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية الإضافة: دالة جديدة لتحديث الملف الشخصي مع الصورة ---
   Future<void> updateUserProfileWithImage({
     required String userId,
     required Map<String, dynamic> data,
@@ -184,18 +185,14 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      // إذا كانت هناك صورة جديدة، قم برفعها أولاً
       if (newImage != null) {
         final ref = _storage.ref().child('user_images').child('$userId.jpg');
         await ref.putFile(newImage);
-        // أضف رابط الصورة الجديد إلى البيانات التي سيتم تحديثها
         data['profileImageUrl'] = await ref.getDownloadURL();
       }
       
-      // تحديث البيانات في Firestore
       await _firestore.collection('users').doc(userId).update(data);
       
-      // إعادة جلب بيانات المستخدم المحدثة
       await _fetchUser(userId);
     } catch (e) {
       print("Error updating profile with image: $e");
@@ -205,7 +202,6 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-  // --- نهاية الإضافة ---
 
   Future<void> updateUserType(String userId, String newUserType) async {
     _isLoading = true;
