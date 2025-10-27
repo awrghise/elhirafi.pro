@@ -20,17 +20,22 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  // --- بداية التعديل 1: إضافة المتغير المفقود ---
+  bool get isAuthenticated => _user != null;
+  // --- نهاية التعديل 1 ---
+
   AuthProvider() {
     _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
   }
 
   Future<void> _onAuthStateChanged(auth.User? firebaseUser) async {
+    _setLoading(true);
     if (firebaseUser == null) {
       _user = null;
     } else {
       await _fetchUser(firebaseUser.uid);
     }
-    notifyListeners();
+    _setLoading(false);
   }
 
   Future<void> _fetchUser(String userId) async {
@@ -43,7 +48,6 @@ class AuthProvider with ChangeNotifier {
       print("Error fetching user: $e");
       _user = null;
     }
-    // We notify listeners in _onAuthStateChanged
   }
 
   Future<void> register({
@@ -53,7 +57,7 @@ class AuthProvider with ChangeNotifier {
     required String phoneNumber,
     required String userType,
     String? professionName,
-    String? primaryCity, // This is the incoming parameter
+    String? primaryCity,
     String? country,
     File? profileImage,
   }) async {
@@ -69,7 +73,6 @@ class AuthProvider with ChangeNotifier {
         profileImageUrl = await _uploadProfileImage(userCredential.user!.uid, profileImage);
       }
 
-      // --- بداية التعديل ---
       UserModel newUser = UserModel(
         id: userCredential.user!.uid,
         name: name,
@@ -78,13 +81,12 @@ class AuthProvider with ChangeNotifier {
         userType: userType,
         profileImageUrl: profileImageUrl,
         professionName: professionName,
-        primaryWorkCity: primaryCity, // <-- استخدام الحقل الصحيح 'primaryWorkCity'
+        primaryWorkCity: primaryCity,
         country: country,
         alertCities: primaryCity != null ? [primaryCity] : [],
         isAvailable: userType == AppStrings.craftsman ? true : null,
         createdAt: Timestamp.now(),
       );
-      // --- نهاية التعديل ---
 
       await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
       _user = newUser;
@@ -113,6 +115,19 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // --- بداية التعديل 2: إضافة الدالة المفقودة ---
+  Future<void> sendPasswordResetEmail(String email) async {
+    _setLoading(true);
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+  // --- نهاية التعديل 2 ---
+
   Future<String> _uploadProfileImage(String userId, File image) async {
     try {
       final ref = _storage.ref().child('profile_images').child('$userId.jpg');
@@ -135,14 +150,29 @@ class AuthProvider with ChangeNotifier {
         data['profileImageUrl'] = await _uploadProfileImage(userId, newImage);
       }
       await _firestore.collection('users').doc(userId).update(data);
-      await _fetchUser(userId); // Refresh user data
-      notifyListeners(); // Notify after fetching new data
+      await _fetchUser(userId);
+      notifyListeners();
     } catch (e) {
       rethrow;
     } finally {
       _setLoading(false);
     }
   }
+
+  // --- بداية التعديل 3: إضافة الدالة المفقودة ---
+  Future<void> updateUserType(String newUserType) async {
+    if (_user == null) return;
+    _setLoading(true);
+    try {
+      await _firestore.collection('users').doc(_user!.id).update({'userType': newUserType});
+      _user = _user!.copyWith(userType: newUserType);
+    } catch (e) {
+      print("Error updating user type: $e");
+    } finally {
+      _setLoading(false);
+    }
+  }
+  // --- نهاية التعديل 3 ---
 
   Future<void> updateAvailability(bool isAvailable) async {
     if (_user == null) return;
