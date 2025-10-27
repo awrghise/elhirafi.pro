@@ -1,4 +1,6 @@
-import 'dart:async'; // تم إضافة هذا الاستيراد
+// lib/providers/auth_provider.dart
+
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -53,7 +55,6 @@ class AuthProvider with ChangeNotifier {
       print("Error fetching user: $e");
       _user = null;
     }
-    // تم حذف notifyListeners() من هنا لتجنب التنبيهات المتعددة
   }
 
   Future<void> register({
@@ -65,6 +66,7 @@ class AuthProvider with ChangeNotifier {
     File? profileImage,
     String? professionName,
     List<String>? workCities,
+    String? country,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -90,6 +92,7 @@ class AuthProvider with ChangeNotifier {
         profileImageUrl: profileImageUrl ?? '',
         professionName: professionName,
         workCities: workCities ?? [],
+        country: country ?? 'المغرب',
         isAvailable: userType == AppStrings.craftsman ? true : false,
         createdAt: Timestamp.now(),
       );
@@ -106,15 +109,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // *** تم تعديل هذه الدالة ***
   Future<void> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
     try {
-      // 1. تسجيل الدخول
       final userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
-      
-      // 2. جلب بيانات المستخدم فورًا بعد النجاح
       if (userCredential.user != null) {
         await _fetchUser(userCredential.user!.uid);
       } else {
@@ -122,11 +121,10 @@ class AuthProvider with ChangeNotifier {
       }
     } catch (e) {
       print("Login failed: $e");
-      _user = null; // تأكد من أن المستخدم null عند الفشل
+      _user = null;
       rethrow;
     } finally {
       _isLoading = false;
-      // 3. إعلام الواجهة بالتغييرات النهائية
       notifyListeners();
     }
   }
@@ -141,21 +139,7 @@ class AuthProvider with ChangeNotifier {
     if (_user != null) {
       try {
         await _firestore.collection('users').doc(_user!.id).update({'isAvailable': isAvailable});
-        // Re-create user object to update the state locally
-        _user = UserModel(
-          id: _user!.id,
-          name: _user!.name,
-          email: _user!.email,
-          phoneNumber: _user!.phoneNumber,
-          userType: _user!.userType,
-          profileImageUrl: _user!.profileImageUrl,
-          professionName: _user!.professionName,
-          workCities: _user!.workCities,
-          isAvailable: isAvailable,
-          rating: _user!.rating,
-          reviewCount: _user!.reviewCount,
-          createdAt: _user!.createdAt,
-        );
+        _user = _user!.copyWith(isAvailable: isAvailable);
         notifyListeners();
       } catch (e) {
         print("Failed to update availability: $e");
@@ -176,4 +160,34 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // --- بداية الدوال التي تم إصلاحها وإعادتها ---
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firestore.collection('users').doc(userId).update(data);
+      await _fetchUser(userId); // إعادة جلب بيانات المستخدم المحدثة
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUserType(String userId, String newUserType) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firestore.collection('users').doc(userId).update({'userType': newUserType});
+      await _fetchUser(userId);
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  // --- نهاية الدوال التي تم إصلاحها ---
 }
