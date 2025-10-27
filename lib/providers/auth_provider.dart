@@ -1,7 +1,6 @@
 // lib/providers/auth_provider.dart
 
-import 'dart:async';
-import 'dart:io';
+import 'dart.io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -65,7 +64,9 @@ class AuthProvider with ChangeNotifier {
     required String userType,
     File? profileImage,
     String? professionName,
-    List<String>? workCities,
+    // --- بداية التعديل ---
+    String? primaryCity,
+    // --- نهاية التعديل ---
     String? country,
   }) async {
     _isLoading = true;
@@ -91,7 +92,10 @@ class AuthProvider with ChangeNotifier {
         userType: userType,
         profileImageUrl: profileImageUrl ?? '',
         professionName: professionName,
-        workCities: workCities ?? [],
+        // --- بداية التعديل ---
+        primaryCity: primaryCity,
+        alertCities: primaryCity != null ? [primaryCity] : [], // مبدئيًا، مدينة التنبيهات هي نفس المدينة الأساسية
+        // --- نهاية التعديل ---
         country: country ?? 'المغرب',
         isAvailable: userType == AppStrings.craftsman ? true : false,
         createdAt: Timestamp.now(),
@@ -161,13 +165,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية الدوال التي تم إصلاحها وإعادتها ---
   Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
     _isLoading = true;
     notifyListeners();
     try {
       await _firestore.collection('users').doc(userId).update(data);
-      await _fetchUser(userId); // إعادة جلب بيانات المستخدم المحدثة
+      await _fetchUser(userId);
     } catch (e) {
       rethrow;
     } finally {
@@ -189,5 +192,4 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-  // --- نهاية الدوال التي تم إصلاحها ---
 }
