@@ -1,6 +1,6 @@
 // lib/screens/auth/register_screen.dart
 
-import 'dart:io';
+import 'dart.io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -37,9 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _userType;
   String? _selectedProfession;
   String? _selectedCountry;
-  // --- بداية التعديل ---
-  String? _selectedPrimaryCity; // مدينة واحدة فقط
-  // --- نهاية التعديل ---
+  String? _selectedPrimaryCity;
   File? _image;
   String? _networkImageUrl;
 
@@ -57,9 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _userType = user.userType;
       _selectedProfession = user.professionName;
       _selectedCountry = user.country;
-      // --- بداية التعديل ---
       _selectedPrimaryCity = user.primaryCity;
-      // --- نهاية التعديل ---
       _networkImageUrl = user.profileImageUrl;
     } else {
       _userType = AppStrings.client;
@@ -76,7 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (pickedFile != null) {
       setState(() {
         _image = File(pickedFile.path);
@@ -89,7 +85,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    // --- بداية التعديل: تحديث التحقق ---
     if (_userType == AppStrings.craftsman && (_selectedProfession == null || _selectedPrimaryCity == null || _selectedCountry == null)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -98,23 +93,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
       return;
     }
-    // --- نهاية التعديل ---
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
     try {
       if (widget.isEditing) {
+        // --- بداية التعديل: استخدام الدالة الجديدة ---
         Map<String, dynamic> updates = {
           'name': _nameController.text.trim(),
           'phoneNumber': _phoneController.text.trim(),
-          'userType': _userType,
           'professionName': _selectedProfession,
-          // --- بداية التعديل ---
           'primaryCity': _selectedPrimaryCity,
-          // --- نهاية التعديل ---
           'country': _selectedCountry,
         };
-        await authProvider.updateUserProfile(widget.userToEdit!.id, updates);
+        await authProvider.updateUserProfileWithImage(
+          userId: widget.userToEdit!.id,
+          data: updates,
+          newImage: _image, // تمرير الصورة الجديدة
+        );
+        // --- نهاية التعديل ---
         if(mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح')),
@@ -128,9 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           phoneNumber: _phoneController.text.trim(),
           userType: _userType!,
           professionName: _selectedProfession,
-          // --- بداية التعديل ---
           primaryCity: _selectedPrimaryCity,
-          // --- نهاية التعديل ---
           country: _selectedCountry,
           profileImage: _image,
         );
@@ -199,16 +194,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (value) => value!.isEmpty ? AppStrings.phoneRequired : null,
                     ),
                     const SizedBox(height: 20),
-                    _buildUserTypeSelector(),
+                    // --- بداية التعديل: إخفاء القائمة في وضع التعديل ---
+                    if (widget.isEditing)
+                      _buildStaticInfoBox('نوع الحساب', _userType ?? '')
+                    else
+                      _buildUserTypeSelector(),
+                    // --- نهاية التعديل ---
                     const SizedBox(height: 16),
                     if (_userType == AppStrings.craftsman) ...[
                       _buildCountryDropdown(),
                       const SizedBox(height: 16),
                       _buildProfessionDropdown(),
                       const SizedBox(height: 16),
-                      // --- بداية التعديل ---
-                      _buildPrimaryCityDropdown(), // استخدام قائمة منسدلة لمدينة واحدة
-                      // --- نهاية التعديل ---
+                      _buildPrimaryCityDropdown(),
                     ],
                     const SizedBox(height: 24),
                     CustomButton(
@@ -221,6 +219,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
     );
   }
+
+  // --- بداية الإضافة: ودجت لعرض المعلومات الثابتة ---
+  Widget _buildStaticInfoBox(String label, String value) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        color: Colors.grey[200],
+        border: Border.all(color: Colors.grey.shade400),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.black87, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+  // --- نهاية الإضافة ---
 
   Widget _buildImagePicker() {
     return Center(
@@ -271,7 +297,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             DropdownMenuItem(value: AppStrings.craftsman, child: Text(AppStrings.craftsman)),
             DropdownMenuItem(value: AppStrings.supplier, child: Text(AppStrings.supplier)),
           ],
-          onChanged: widget.isEditing ? null : (value) {
+          onChanged: (value) {
             if (value != null) {
               setState(() {
                 _userType = value;
@@ -304,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onChanged: (newValue) {
             setState(() {
               _selectedCountry = newValue;
-              _selectedPrimaryCity = null; // إعادة تعيين المدينة عند تغيير الدولة
+              _selectedPrimaryCity = null;
             });
           },
         ),
@@ -340,7 +366,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // --- بداية التعديل: قائمة منسدلة لمدينة واحدة ---
   Widget _buildPrimaryCityDropdown() {
     final regions = _selectedCountry != null ? CitiesData.getRegions(_selectedCountry!) : <String>[];
     
@@ -371,5 +396,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-  // --- نهاية التعديل ---
 }
