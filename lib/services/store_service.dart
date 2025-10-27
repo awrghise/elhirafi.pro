@@ -1,15 +1,17 @@
+// lib/services/store_service.dart
+
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import '../models/product_model.dart';
+import '../models/store_model.dart';
 
 class StoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Get store by supplier ID
   Future<StoreModel?> getStoreBySupplier(String supplierId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -26,10 +28,10 @@ class StoreService {
     }
   }
 
-  // Create store
   Future<String?> createStore(StoreModel store) async {
     try {
-      DocumentReference docRef = await _firestore.collection('stores').add(store.toFirestore());
+      DocumentReference docRef =
+          await _firestore.collection('stores').add(store.toFirestore());
       return docRef.id;
     } catch (e) {
       print('Error creating store: $e');
@@ -37,7 +39,6 @@ class StoreService {
     }
   }
 
-  // Update store
   Future<bool> updateStore(String storeId, Map<String, dynamic> updates) async {
     try {
       await _firestore.collection('stores').doc(storeId).update(updates);
@@ -48,19 +49,16 @@ class StoreService {
     }
   }
 
-  // Get products by store
   Stream<List<ProductModel>> getStoreProducts(String supplierId) {
     return _firestore
         .collection('products')
         .where('supplierId', isEqualTo: supplierId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ProductModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => ProductModel.fromFirestore(doc)).toList());
   }
 
-  // Get product count for supplier
   Future<int> getProductCount(String supplierId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -73,11 +71,37 @@ class StoreService {
       return 0;
     }
   }
+  
+  // --- بداية الدالة المضافة لإصلاح الخطأ ---
+  // دالة لحساب عدد الطلبات (قيمة وهمية حاليًا)
+  Future<int> getOrdersCount(String supplierId) async {
+    // TODO: Implement actual order counting logic when the orders feature is built.
+    // For now, we return a placeholder value to prevent build errors.
+    await Future.delayed(const Duration(milliseconds: 100)); // Simulate network delay
+    return 0; 
+  }
+  // --- نهاية الدالة المضافة ---
 
-  // Add product
+  Stream<Map<String, int>> getDashboardStats(String supplierId) {
+    final productCountStream = _firestore
+        .collection('products')
+        .where('supplierId', isEqualTo: supplierId)
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+
+    return productCountStream.map((productCount) {
+      return {
+        'products': productCount,
+        'orders': 0, // قيمة وهمية حاليًا
+        'revenue': 0, // قيمة وهمية حاليًا
+      };
+    });
+  }
+
   Future<String?> addProduct(ProductModel product) async {
     try {
-      DocumentReference docRef = await _firestore.collection('products').add(product.toFirestore());
+      DocumentReference docRef =
+          await _firestore.collection('products').add(product.toFirestore());
       return docRef.id;
     } catch (e) {
       print('Error adding product: $e');
@@ -85,8 +109,8 @@ class StoreService {
     }
   }
 
-  // Update product
-  Future<bool> updateProduct(String productId, Map<String, dynamic> updates) async {
+  Future<bool> updateProduct(
+      String productId, Map<String, dynamic> updates) async {
     try {
       updates['updatedAt'] = Timestamp.fromDate(DateTime.now());
       await _firestore.collection('products').doc(productId).update(updates);
@@ -97,19 +121,17 @@ class StoreService {
     }
   }
 
-  // Delete product
   Future<bool> deleteProduct(String productId, List<String> imageUrls) async {
     try {
-      // Delete images from storage
       for (String imageUrl in imageUrls) {
         try {
-          await _storage.refFromURL(imageUrl).delete();
+          if (imageUrl.startsWith('gs://') || imageUrl.startsWith('https://')) {
+            await _storage.refFromURL(imageUrl).delete();
+          }
         } catch (e) {
-          print('Error deleting image: $e');
+          print('Error deleting image from storage: $e');
         }
       }
-
-      // Delete product document
       await _firestore.collection('products').doc(productId).delete();
       return true;
     } catch (e) {
@@ -118,16 +140,13 @@ class StoreService {
     }
   }
 
-  // Compress and upload image
   Future<String?> uploadProductImage(File imageFile, String supplierId) async {
     try {
-      // Read image
       final bytes = await imageFile.readAsBytes();
       img.Image? image = img.decodeImage(bytes);
 
       if (image == null) return null;
 
-      // Resize if too large (max 1024x1024)
       if (image.width > 1024 || image.height > 1024) {
         image = img.copyResize(
           image,
@@ -136,22 +155,19 @@ class StoreService {
         );
       }
 
-      // Compress to JPEG with quality 85
       final compressedBytes = img.encodeJpg(image, quality: 85);
 
-      // Save to temp file
       final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final tempFile =
+          File('${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg');
       await tempFile.writeAsBytes(compressedBytes);
 
-      // Upload to Firebase Storage
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = _storage.ref().child('products/$supplierId/$fileName');
-      
+
       await ref.putFile(tempFile);
       final downloadUrl = await ref.getDownloadURL();
 
-      // Delete temp file
       await tempFile.delete();
 
       return downloadUrl;
@@ -161,18 +177,15 @@ class StoreService {
     }
   }
 
-  // Get all stores (for marketplace)
   Stream<List<StoreModel>> getAllStores() {
     return _firestore
         .collection('stores')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => StoreModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => StoreModel.fromFirestore(doc)).toList());
   }
 
-  // Get products by store ID (for marketplace)
   Stream<List<ProductModel>> getProductsByStore(String storeId) {
     return _firestore
         .collection('products')
@@ -180,19 +193,17 @@ class StoreService {
         .where('isAvailable', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ProductModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => ProductModel.fromFirestore(doc)).toList());
   }
 
-  // Upgrade to premium
   Future<bool> upgradeToPremium(String storeId, int months) async {
     try {
       final expiryDate = DateTime.now().add(Duration(days: months * 30));
       await _firestore.collection('stores').doc(storeId).update({
         'isPremium': true,
         'premiumExpiryDate': Timestamp.fromDate(expiryDate),
-        'maxProducts': 50, // Premium: 50 products
+        'maxProducts': 50,
       });
       return true;
     } catch (e) {
@@ -201,4 +212,3 @@ class StoreService {
     }
   }
 }
-
