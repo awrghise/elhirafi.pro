@@ -1,3 +1,5 @@
+// lib/models/user_model.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
@@ -9,7 +11,7 @@ class UserModel {
   final String profileImageUrl;
   final String? professionName;
   final List<String> alertCities;
-  final String? primaryWorkCity; // <-- إعادة الحقل المفقود
+  final String? primaryWorkCity; // <-- بداية التعديل: إعادة الحقل
   final String? country;
   final bool? isAvailable;
   final double rating;
@@ -25,7 +27,7 @@ class UserModel {
     this.profileImageUrl = '',
     this.professionName,
     this.alertCities = const [],
-    this.primaryWorkCity, // <-- إعادة الحقل المفقود
+    this.primaryWorkCity, // <-- تعديل المُنشئ
     this.country,
     this.isAvailable,
     this.rating = 0.0,
@@ -44,7 +46,7 @@ class UserModel {
       profileImageUrl: data['profileImageUrl'] ?? '',
       professionName: data['professionName'],
       alertCities: List<String>.from(data['alertCities'] ?? []),
-      primaryWorkCity: data['primaryWorkCity'], // <-- إعادة الحقل المفقود
+      primaryWorkCity: data['primaryWorkCity'], // <-- قراءة الحقل من Firestore
       country: data['country'],
       isAvailable: data['isAvailable'],
       rating: (data['rating'] ?? 0.0).toDouble(),
@@ -62,7 +64,7 @@ class UserModel {
       'profileImageUrl': profileImageUrl,
       'professionName': professionName,
       'alertCities': alertCities,
-      'primaryWorkCity': primaryWorkCity, // <-- إعادة الحقل المفقود
+      'primaryWorkCity': primaryWorkCity, // <-- كتابة الحقل إلى Firestore
       'country': country,
       'isAvailable': isAvailable,
       'rating': rating,
@@ -80,7 +82,7 @@ class UserModel {
     String? profileImageUrl,
     String? professionName,
     List<String>? alertCities,
-    String? primaryWorkCity, // <-- إعادة الحقل المفقود
+    String? primaryWorkCity, // <-- تعديل دالة النسخ
     String? country,
     bool? isAvailable,
     double? rating,
@@ -96,7 +98,7 @@ class UserModel {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       professionName: professionName ?? this.professionName,
       alertCities: alertCities ?? this.alertCities,
-      primaryWorkCity: primaryWorkCity ?? this.primaryWorkCity, // <-- إعادة الحقل المفقود
+      primaryWorkCity: primaryWorkCity ?? this.primaryWorkCity, // <-- نهاية التعديل
       country: country ?? this.country,
       isAvailable: isAvailable ?? this.isAvailable,
       rating: rating ?? this.rating,
