@@ -11,8 +11,11 @@ class UserModel {
   final String profileImageUrl;
   final String? professionId;
   final String? professionName;
-  final List<String> workCities;
-  final String? country; // <-- ١. تم إضافة خاصية الدولة هنا
+  // --- بداية التعديل ---
+  final String? primaryCity;       // مدينة العمل الأساسية (واحدة)
+  final List<String> alertCities; // مدن تلقي التنبيهات (متعددة)
+  // --- نهاية التعديل ---
+  final String? country;
   final bool? isAvailable;
   final double rating;
   final int reviewCount;
@@ -27,15 +30,17 @@ class UserModel {
     this.profileImageUrl = '',
     this.professionId,
     this.professionName,
-    this.workCities = const [],
-    this.country, // <-- ٢. تمت إضافتها إلى المُنشئ
+    // --- بداية التعديل ---
+    this.primaryCity,
+    this.alertCities = const [],
+    // --- نهاية التعديل ---
+    this.country,
     this.isAvailable,
     this.rating = 0.0,
     this.reviewCount = 0,
     required this.createdAt,
   });
 
-  // Factory constructor to create a UserModel from a Firestore document
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
@@ -47,8 +52,11 @@ class UserModel {
       profileImageUrl: data['profileImageUrl'] ?? '',
       professionId: data['professionId'],
       professionName: data['professionName'],
-      workCities: List<String>.from(data['workCities'] ?? []),
-      country: data['country'], // <-- ٣. تمت إضافتها هنا لقراءة البيانات من Firestore
+      // --- بداية التعديل ---
+      primaryCity: data['primaryCity'],
+      alertCities: List<String>.from(data['alertCities'] ?? []),
+      // --- نهاية التعديل ---
+      country: data['country'],
       isAvailable: data['isAvailable'],
       rating: (data['rating'] ?? 0.0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
@@ -56,14 +64,13 @@ class UserModel {
     );
   }
 
-  // Getters for compatibility
+  // Getters للتوافق مع الكود القديم (سيتم إزالتها لاحقًا)
   String get uid => id;
   String get displayName => name;
   String get profession => professionName ?? '';
-  List<String> get cities => workCities;
+  List<String> get cities => alertCities; // توجيه Getter القديم للحقل الجديد
   int? get yearsOfExperience => null;
 
-  // Method to convert a UserModel instance to a map for Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
@@ -73,16 +80,18 @@ class UserModel {
       'profileImageUrl': profileImageUrl,
       'professionId': professionId,
       'professionName': professionName,
-      'workCities': workCities,
-      'country': country, // <-- ٤. تمت إضافتها هنا لحفظ البيانات في Firestore
+      // --- بداية التعديل ---
+      'primaryCity': primaryCity,
+      'alertCities': alertCities,
+      // --- نهاية التعديل ---
+      'country': country,
       'isAvailable': isAvailable,
       'rating': rating,
       'reviewCount': reviewCount,
       'createdAt': createdAt,
     };
   }
-  
-  // دالة copyWith المضافة لإصلاح الخطأ
+
   UserModel copyWith({
     String? id,
     String? name,
@@ -92,8 +101,11 @@ class UserModel {
     String? profileImageUrl,
     String? professionId,
     String? professionName,
-    List<String>? workCities,
-    String? country, // <-- ٥. تمت إضافتها هنا للسماح بالتحديث
+    // --- بداية التعديل ---
+    String? primaryCity,
+    List<String>? alertCities,
+    // --- نهاية التعديل ---
+    String? country,
     bool? isAvailable,
     double? rating,
     int? reviewCount,
@@ -108,8 +120,11 @@ class UserModel {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       professionId: professionId ?? this.professionId,
       professionName: professionName ?? this.professionName,
-      workCities: workCities ?? this.workCities,
-      country: country ?? this.country, // <-- تمت إضافتها هنا
+      // --- بداية التعديل ---
+      primaryCity: primaryCity ?? this.primaryCity,
+      alertCities: alertCities ?? this.alertCities,
+      // --- نهاية التعديل ---
+      country: country ?? this.country,
       isAvailable: isAvailable ?? this.isAvailable,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
