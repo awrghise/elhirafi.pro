@@ -122,92 +122,106 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            color: AppColors.surface,
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: _selectedProfession,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'اختر المهنة',
-                    prefixIcon: const Icon(Icons.work_outline, size: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('جميع المهن')),
-                    ...ProfessionsData().getAllProfessions().map((profession) {
-                      return DropdownMenuItem(
-                        value: profession.getNameByDialect('AR'),
-                        child: Text(profession.getNameByDialect('AR'), style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedProfession = value);
-                    _resetAndReload();
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _selectedCity,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'اختر المدينة',
-                    prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('جميع المدن')),
-                    ...availableCities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(city, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedCity = value);
-                    _resetAndReload();
-                  },
-                ),
-              ],
-            ),
-          ),
+          _buildFilterSection(availableCities),
           Expanded(
-            child: _craftsmen.isEmpty && !_isLoading
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.person_search, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('لا يوجد حرفيون متاحون بالفلتر الحالي', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _craftsmen.length + (_hasMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _craftsmen.length) {
-                        return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-                      }
-                      final craftsman = _craftsmen[index];
-                      return _buildCraftsmanCard(craftsman, currentUser?.userType == AppStrings.client);
-                    },
-                  ),
+            child: _buildCraftsmenList(currentUser),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterSection(List<String> availableCities) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: AppColors.surface,
+      child: Column(
+        children: [
+          DropdownButtonFormField<String>(
+            value: _selectedProfession,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'اختر المهنة',
+              prefixIcon: const Icon(Icons.work_outline, size: 20),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('جميع المهن')),
+              ...ProfessionsData().getAllProfessions().map((profession) {
+                return DropdownMenuItem(
+                  value: profession.getNameByDialect('AR'),
+                  child: Text(profession.getNameByDialect('AR'), style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
+                );
+              }),
+            ],
+            onChanged: (value) {
+              setState(() => _selectedProfession = value);
+              _resetAndReload();
+            },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _selectedCity,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'اختر المدينة',
+              prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('جميع المدن')),
+              ...availableCities.map((city) {
+                return DropdownMenuItem(
+                  value: city,
+                  child: Text(city, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
+                );
+              }),
+            ],
+            onChanged: (value) {
+              setState(() => _selectedCity = value);
+              _resetAndReload();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCraftsmenList(UserModel? currentUser) {
+    if (_isLoading && _craftsmen.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_craftsmen.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_search, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('لا يوجد حرفيون متاحون بالفلتر الحالي', style: TextStyle(fontSize: 16, color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _craftsmen.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == _craftsmen.length) {
+          return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+        }
+        final craftsman = _craftsmen[index];
+        return _buildCraftsmanCard(craftsman, currentUser?.userType == AppStrings.client);
+      },
     );
   }
 
@@ -244,7 +258,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              craftsman.primaryWorkCity ?? 'غير محدد',
+                              craftsman.primaryWorkCity ?? 'غير محدد', // <-- الهدف 2: استخدام الحقل الصحيح
                               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -294,17 +308,20 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
+      // --- بداية التعديل: الهدف 1 ---
       final chatId = await chatProvider.getOrCreateChat(
         user1Id: currentUser.id,
         user1Name: currentUser.name,
+        user1Phone: currentUser.phoneNumber, // <-- تمرير رقم هاتف المستخدم الحالي
         user2Id: craftsman.id,
         user2Name: craftsman.name,
+        user2Phone: craftsman.phoneNumber, // <-- تمرير رقم هاتف الحرفي
       );
+      // --- نهاية التعديل ---
 
       if(mounted) Navigator.pop(context);
 
       if(mounted){
-        // --- بداية التعديل: تمرير رقم الهاتف ---
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -312,11 +329,10 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               chatId: chatId,
               otherUserId: craftsman.id,
               otherUserName: craftsman.name,
-              otherUserPhone: craftsman.phoneNumber, // <-- هنا التعديل
+              otherUserPhone: craftsman.phoneNumber,
             ),
           ),
         );
-        // --- نهاية التعديل ---
       }
     } catch (e) {
       if(mounted) Navigator.pop(context);
