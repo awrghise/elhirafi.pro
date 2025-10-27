@@ -1,15 +1,21 @@
+// lib/screens/main/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+// import 'package:package_info_plus/package_info_plus.dart'; // تم تعطيله لتجنب الأخطاء
+import 'package:permission_handler/permission_handler.dart';
+
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
 import '../content/privacy_policy_screen.dart';
-import '../content/terms_of_service_screen.dart';
 import '../content/about_us_screen.dart';
 import '../content/contact_us_screen.dart';
+import '../auth/register_screen.dart'; // للتعديل على الملف الشخصي
+import '../content/terms_of_service_screen.dart'; // استيراد شروط الاستخدام
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,8 +25,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isDarkMode = false;
-  String _selectedLanguage = 'العربية';
+  final bool _isDarkMode = false;
+  final String _selectedLanguage = 'العربية'; // اللغة الوحيدة المتاحة
+  final String _appVersion = '1.0.0'; // قيمة افتراضية
 
   @override
   Widget build(BuildContext context) {
@@ -32,139 +39,150 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text(AppStrings.settings),
         backgroundColor: AppColors.primaryColor,
       ),
-      body: ListView(
-        children: [
-          // User Mode Section
-          if (user != null) ...[
-            _buildSectionHeader(AppStrings.currentMode),
-            _buildModeCard(user, authProvider),
-            const Divider(height: 32),
-          ],
+      // --- تم إضافة Directionality هنا ---
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: ListView(
+          children: [
+            // User Mode Section
+            if (user != null) ...[
+              _buildSectionHeader(AppStrings.currentMode),
+              _buildModeCard(user, authProvider),
+              const Divider(height: 32),
+            ],
 
-          // App Settings
-          _buildSectionHeader(AppStrings.settings),
-          _buildSettingsTile(
-            icon: Icons.language,
-            title: AppStrings.changeLanguage,
-            subtitle: _selectedLanguage,
-            onTap: () => _showLanguageDialog(),
-          ),
-          _buildSwitchTile(
-            icon: Icons.dark_mode,
-            title: AppStrings.darkMode,
-            value: _isDarkMode,
-            onChanged: (value) {
-              setState(() => _isDarkMode = value);
-            },
-          ),
-          _buildSettingsTile(
-            icon: Icons.notifications,
-            title: AppStrings.notifications,
-            onTap: () {
-              // TODO: Navigate to notifications settings
-            },
-          ),
-          const Divider(height: 32),
-
-          // Legal & Info
-          _buildSectionHeader('القانونية والمعلومات'),
-          _buildSettingsTile(
-            icon: Icons.privacy_tip,
-            title: AppStrings.privacyPolicy,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PrivacyPolicyScreen(),
-                ),
-              );
-            },
-          ),
-          _buildSettingsTile(
-            icon: Icons.description,
-            title: AppStrings.termsOfService,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TermsOfServiceScreen(),
-                ),
-              );
-            },
-          ),
-          _buildSettingsTile(
-            icon: Icons.info,
-            title: AppStrings.aboutUs,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AboutUsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildSettingsTile(
-            icon: Icons.contact_support,
-            title: AppStrings.contactUs,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ContactUsScreen(),
-                ),
-              );
-            },
-          ),
-          const Divider(height: 32),
-
-          // Share & Rate
-          _buildSectionHeader('مشاركة التطبيق'),
-          _buildSettingsTile(
-            icon: Icons.share,
-            title: AppStrings.shareApp,
-            onTap: () => _shareApp(),
-          ),
-          _buildSettingsTile(
-            icon: Icons.star,
-            title: AppStrings.rateApp,
-            onTap: () => _rateApp(),
-          ),
-          const Divider(height: 32),
-
-          // Account
-          if (user != null) ...[
-            _buildSectionHeader(AppStrings.accountType),
-            _buildSettingsTile(
-              icon: Icons.edit,
-              title: AppStrings.editProfile,
-              onTap: () {
-                // Navigate to profile edit
+            // App Settings
+            _buildSectionHeader(AppStrings.settings),
+            _buildLanguageDropdown(),
+            _buildSwitchTile(
+              icon: Icons.dark_mode,
+              title: AppStrings.darkMode,
+              value: _isDarkMode,
+              onChanged: (value) {
+                // --- تم تعديل الوظيفة لعرض رسالة ---
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('الوضع الليلي غير متاح حاليًا')),
+                );
               },
             ),
             _buildSettingsTile(
-              icon: Icons.logout,
-              title: AppStrings.logout,
-              textColor: AppColors.errorColor,
-              onTap: () => _showLogoutDialog(authProvider),
+              icon: Icons.notifications,
+              title: AppStrings.notifications,
+              onTap: () async {
+                await openAppSettings();
+              },
+            ),
+            const Divider(height: 32),
+
+            // Legal & Info
+            _buildSectionHeader('القانونية والمعلومات'),
+            _buildSettingsTile(
+              icon: Icons.privacy_tip,
+              title: AppStrings.privacyPolicy,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyScreen(),
+                  ),
+                );
+              },
             ),
             _buildSettingsTile(
-              icon: Icons.delete_forever,
-              title: AppStrings.deleteAccount,
-              textColor: AppColors.errorColor,
-              onTap: () => _showDeleteAccountDialog(authProvider),
+              icon: Icons.gavel, // أيقونة أفضل لشروط الاستخدام
+              title: AppStrings.termsOfService,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TermsOfServiceScreen(),
+                  ),
+                );
+              },
             ),
-          ],
+            _buildSettingsTile(
+              icon: Icons.info,
+              title: AppStrings.aboutUs,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AboutUsScreen(),
+                  ),
+                );
+              },
+            ),
+            _buildSettingsTile(
+              icon: Icons.contact_support,
+              title: AppStrings.contactUs,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ContactUsScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 32),
 
-          const SizedBox(height: 32),
-          Center(
-            child: Text(
-              '${AppStrings.version} 1.0.0',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            // Share & Rate
+            _buildSectionHeader('مشاركة وتقييم التطبيق'),
+            _buildSettingsTile(
+              icon: Icons.share,
+              title: AppStrings.shareApp,
+              onTap: () => _shareApp(),
             ),
-          ),
-          const SizedBox(height: 16),
-        ],
+            _buildSettingsTile(
+              icon: Icons.star,
+              title: AppStrings.rateApp,
+              onTap: () => _rateApp(),
+            ),
+            const Divider(height: 32),
+
+            // Account
+            if (user != null) ...[
+              _buildSectionHeader(AppStrings.accountType),
+              _buildSettingsTile(
+                icon: Icons.edit,
+                title: AppStrings.editProfile,
+                onTap: () {
+                  // --- تم إصلاح وظيفة الزر هنا ---
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RegisterScreen(
+                        isEditing: true,
+                        userToEdit: user,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildSettingsTile(
+                icon: Icons.logout,
+                title: AppStrings.logout,
+                textColor: AppColors.errorColor,
+                onTap: () => _showLogoutDialog(authProvider),
+              ),
+              _buildSettingsTile(
+                icon: Icons.delete_forever,
+                title: AppStrings.deleteAccount,
+                textColor: AppColors.errorColor,
+                onTap: () => _showDeleteAccountDialog(authProvider),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+            Center(
+              child: Text(
+                '${AppStrings.version} $_appVersion',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       Text(
-                        user.displayName,
+                        user.name,
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
@@ -235,35 +253,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (user.userType != 'client')
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _switchMode('client', authProvider),
-                      icon: const Icon(Icons.person, size: 18),
-                      label: const Text(AppStrings.switchToClientMode),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryColor,
-                      ),
-                    ),
+            if (user.userType != 'supplier') ...[
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: user.userType,
+                decoration: const InputDecoration(
+                  labelText: 'التحويل إلى',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'client',
+                    child: Text(AppStrings.clientMode),
                   ),
-                if (user.userType != 'client' && user.userType != 'craftsman')
-                  const SizedBox(width: 8),
-                if (user.userType != 'craftsman')
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _switchMode('craftsman', authProvider),
-                      icon: const Icon(Icons.construction, size: 18),
-                      label: const Text(AppStrings.switchToCraftsmanMode),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryColor,
-                      ),
-                    ),
+                  DropdownMenuItem(
+                    value: 'craftsman',
+                    child: Text(AppStrings.craftsmanMode),
                   ),
-              ],
-            ),
+                ],
+                onChanged: (newValue) {
+                  if (newValue != null && newValue != user.userType) {
+                    _switchMode(newValue, authProvider);
+                  }
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -312,43 +327,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(AppStrings.changeLanguage),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('العربية'),
-              value: 'العربية',
-              groupValue: _selectedLanguage,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('Français'),
-              value: 'Français',
-              groupValue: _selectedLanguage,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('English'),
-              value: 'English',
-              groupValue: _selectedLanguage,
-              onChanged: (value) {
-                setState(() => _selectedLanguage = value!);
-                Navigator.pop(context);
-              },
-            ),
-          ],
+  Widget _buildLanguageDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: _selectedLanguage,
+        decoration: const InputDecoration(
+          labelText: AppStrings.language,
+          icon: Icon(Icons.language, color: AppColors.primaryColor),
+          border: UnderlineInputBorder(),
         ),
+        // --- تم تعديل القائمة هنا ---
+        items: const [
+          DropdownMenuItem(
+            value: 'العربية',
+            child: Text('العربية'),
+          ),
+        ],
+        onChanged: null, // تعطيل التغيير بما أنها اللغة الوحيدة
       ),
     );
   }
@@ -367,10 +363,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement mode switching
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم تغيير الوضع بنجاح')),
-              );
+              try {
+                await authProvider.updateUserType(authProvider.user!.id, newMode);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم تغيير الوضع بنجاح')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('فشل تغيير الوضع: ${e.toString()}')),
+                  );
+                }
+              }
             },
             child: const Text(AppStrings.confirm),
           ),
@@ -399,7 +405,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _rateApp() async {
-    final url = Uri.parse('https://play.google.com/store/apps/details?id=com.elsane3.app');
+    final url = Uri.parse(
+        'https://play.google.com/store/apps/details?id=com.elsane3.app');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -420,7 +427,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               await authProvider.signOut();
               if (mounted) {
-                Navigator.pop(context);
+                Navigator.of(context)
+                    .popUntil((route) => route.isFirst);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorColor),
@@ -444,10 +452,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // TODO: Implement account deletion
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text(AppStrings.accountDeleted)),
+                const SnackBar(content: Text('وظيفة حذف الحساب قيد التطوير')),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.errorColor),
@@ -458,4 +465,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-
