@@ -64,9 +64,7 @@ class AuthProvider with ChangeNotifier {
     required String userType,
     File? profileImage,
     String? professionName,
-    // --- بداية التعديل ---
     String? primaryCity,
-    // --- نهاية التعديل ---
     String? country,
   }) async {
     _isLoading = true;
@@ -92,10 +90,8 @@ class AuthProvider with ChangeNotifier {
         userType: userType,
         profileImageUrl: profileImageUrl ?? '',
         professionName: professionName,
-        // --- بداية التعديل ---
         primaryCity: primaryCity,
-        alertCities: primaryCity != null ? [primaryCity] : [], // مبدئيًا، مدينة التنبيهات هي نفس المدينة الأساسية
-        // --- نهاية التعديل ---
+        alertCities: primaryCity != null ? [primaryCity] : [],
         country: country ?? 'المغرب',
         isAvailable: userType == AppStrings.craftsman ? true : false,
         createdAt: Timestamp.now(),
@@ -178,6 +174,38 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // --- بداية الإضافة: دالة جديدة لتحديث الملف الشخصي مع الصورة ---
+  Future<void> updateUserProfileWithImage({
+    required String userId,
+    required Map<String, dynamic> data,
+    File? newImage,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // إذا كانت هناك صورة جديدة، قم برفعها أولاً
+      if (newImage != null) {
+        final ref = _storage.ref().child('user_images').child('$userId.jpg');
+        await ref.putFile(newImage);
+        // أضف رابط الصورة الجديد إلى البيانات التي سيتم تحديثها
+        data['profileImageUrl'] = await ref.getDownloadURL();
+      }
+      
+      // تحديث البيانات في Firestore
+      await _firestore.collection('users').doc(userId).update(data);
+      
+      // إعادة جلب بيانات المستخدم المحدثة
+      await _fetchUser(userId);
+    } catch (e) {
+      print("Error updating profile with image: $e");
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  // --- نهاية الإضافة ---
 
   Future<void> updateUserType(String userId, String newUserType) async {
     _isLoading = true;
