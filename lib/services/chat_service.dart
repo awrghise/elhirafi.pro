@@ -5,7 +5,6 @@ import '../models/message_model.dart';
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // --- بداية التعديل: إضافة دالة لجلب بيانات محادثة واحدة ---
   Stream<ChatModel> getChatDetails(String chatId) {
     return _firestore
         .collection('chats')
@@ -13,18 +12,27 @@ class ChatService {
         .snapshots()
         .map((doc) => ChatModel.fromFirestore(doc));
   }
-  // --- نهاية التعديل ---
 
-  Stream<List<ChatModel>> getUserChats(String userId) {
-    return _firestore
+  // --- بداية التعديل: إضافة الدالة المفقودة ---
+  Stream<List<ChatModel>> getUserChatsPaginated({
+    required String userId,
+    required int limit,
+    DocumentSnapshot? startAfter,
+  }) {
+    Query query = _firestore
         .collection('chats')
         .where('participants', arrayContains: userId)
         .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatModel.fromFirestore(doc))
-            .toList());
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    return query.snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
   }
+  // --- نهاية التعديل ---
 
   Stream<List<MessageModel>> getChatMessages(String chatId) {
     return _firestore
@@ -63,14 +71,12 @@ class ChatService {
           .doc(message.id)
           .set(message.toFirestore());
 
-      // --- بداية التعديل: زيادة عدد الرسائل وتحديث المحادثة ---
       await _firestore.collection('chats').doc(chatId).update({
         'lastMessageContent': content,
         'lastMessageTime': Timestamp.fromDate(message.timestamp),
         'lastMessageSenderId': senderId,
-        'messageCount': FieldValue.increment(1), // <-- زيادة العداد بواحد
+        'messageCount': FieldValue.increment(1),
       });
-      // --- نهاية التعديل ---
     } catch (e) {
       print('Error sending message: $e');
       rethrow;
@@ -95,10 +101,10 @@ class ChatService {
         id: chatId,
         participants: [user1Id, user2Id],
         participantNames: {user1Id: user1Name, user2Id: user2Name},
-        lastMessageContent: 'تم بدء المحادثة', // رسالة أولية
+        lastMessageContent: 'تم بدء المحادثة',
         lastMessageTime: DateTime.now(),
         lastMessageSenderId: '',
-        messageCount: 0, // تبدأ المحادثة بصفر رسائل
+        messageCount: 0,
       );
       await chatDoc.set(newChat.toFirestore());
     }
