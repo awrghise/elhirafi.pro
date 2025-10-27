@@ -1,41 +1,65 @@
+// lib/screens/main/chats_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
-import '../../models/chat_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../chat/chat_detail_screen.dart';
 
-class ChatsScreen extends StatelessWidget {
+class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
-  String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+  @override
+  State<ChatsScreen> createState() => _ChatsScreenState();
+}
 
-    if (difference.inMinutes < 1) {
-      return AppStrings.now;
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} ${AppStrings.minutesAgo}';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours} ${AppStrings.hoursAgo}';
-    } else {
-      return '${difference.inDays} ${AppStrings.daysAgo}';
+class _ChatsScreenState extends State<ChatsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialChats();
+      _scrollController.addListener(_onScroll);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInitialChats() async {
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    if (user != null) {
+      await Provider.of<ChatProvider>(context, listen: false).fetchInitialChats(user.id);
+    }
+  }
+
+  void _onScroll() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8 &&
+        !chatProvider.isLoadingMore &&
+        chatProvider.hasMore) {
+      final user = Provider.of<AuthProvider>(context, listen: false).user;
+      if (user != null) {
+        chatProvider.fetchMoreChats(user.id);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = Provider.of<AuthProvider>(context);
-    final UserModel? user = authState.user;
+    final currentUser = Provider.of<AuthProvider>(context).user;
 
-    if (user == null) {
+    if (currentUser == null) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: Text('الرجاء تسجيل الدخول لعرض المحادثات')),
       );
     }
 
@@ -43,66 +67,90 @@ class ChatsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(AppStrings.chats),
         backgroundColor: AppColors.primaryColor,
-        foregroundColor: AppColors.textOnPrimaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search functionality
-            },
-          ),
-        ],
       ),
-      body: StreamBuilder<List<ChatModel>>(
-        stream: Provider.of<ChatProvider>(context).getUserChats(user.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: Consumer<ChatProvider>(
+        builder: (context, chatProvider, child) {
+          if (chatProvider.isLoading && chatProvider.chats.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: AppColors.textSecondaryColor,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    AppStrings.noChatsFound,
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: AppColors.textSecondaryColor,
+          if (chatProvider.chats.isEmpty) {
+            return Center(
+              child: RefreshIndicator(
+                onRefresh: _loadInitialChats,
+                child: ListView(
+                  children: const [
+                    SizedBox(height: 150),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('لا توجد محادثات بعد', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'ابدأ محادثة جديدة من خلال الرد على طلب عمل',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textHintColor,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }
-          final chats = snapshot.data!;
+
+          final chats = chatProvider.chats;
+
           return RefreshIndicator(
-            onRefresh: () async {
-              // Invalidate and refetch
-            },
+            onRefresh: _loadInitialChats,
             child: ListView.builder(
-              itemCount: chats.length,
+              controller: _scrollController,
+              itemCount: chats.length + (chatProvider.isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == chats.length) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
                 final chat = chats[index];
-                return _buildChatTile(context, chat, user.id);
+                final otherUserId = chat.participants.firstWhere((id) => id != currentUser.id, orElse: () => '');
+                final otherUserName = chat.participantNames[otherUserId] ?? 'مستخدم غير معروف';
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primaryColor,
+                      child: Text(
+                        otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(otherUserName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                      chat.lastMessageContent,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text(
+                      _formatTime(chat.lastMessageTime),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatDetailScreen(
+                            chatId: chat.id,
+                            otherUserId: otherUserId,
+                            otherUserName: otherUserName,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
               },
             ),
           );
@@ -111,80 +159,12 @@ class ChatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildChatTile(BuildContext context, ChatModel chat, String currentUserId) {
-    final otherUserId = chat.participants.firstWhere((id) => id != currentUserId, orElse: () => '');
-    final otherUserName = chat.participantNames[otherUserId] ?? 'مستخدم';
-    final isLastMessageFromMe = chat.lastMessageSenderId == currentUserId;
-
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: AppColors.primaryColor,
-        child: Text(
-          otherUserName.isNotEmpty ? otherUserName.substring(0, 1).toUpperCase() : 'U',
-          style: const TextStyle(
-            color: AppColors.textOnPrimaryColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      title: Text(
-        otherUserName,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryColor,
-        ),
-      ),
-      subtitle: Row(
-        children: [
-          if (isLastMessageFromMe) ...[
-            const Icon(
-              Icons.done,
-              size: 16,
-              color: AppColors.textSecondaryColor,
-            ),
-            const SizedBox(width: 4),
-          ],
-          Expanded(
-            child: Text(
-              chat.lastMessageContent.isEmpty 
-                  ? 'لا توجد رسائل' 
-                  : chat.lastMessageContent,
-              style: const TextStyle(
-                color: AppColors.textSecondaryColor,
-                fontSize: 14,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            _formatTimeAgo(chat.lastMessageTime),
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          // TODO: Add unread message count indicator
-        ],
-      ),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ChatDetailScreen(
-              chatId: chat.id,
-              otherUserName: otherUserName,
-              otherUserId: otherUserId,
-            ),
-          ),
-        );
-      },
-    );
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+    if (difference.inDays > 0) return '${difference.inDays} يوم';
+    if (difference.inHours > 0) return '${difference.inHours} ساعة';
+    if (difference.inMinutes > 0) return '${difference.inMinutes} دقيقة';
+    return 'الآن';
   }
 }
