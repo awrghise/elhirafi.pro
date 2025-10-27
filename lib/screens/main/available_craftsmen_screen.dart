@@ -69,9 +69,11 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         query = query.where('professionName', isEqualTo: _selectedProfession);
       }
 
+      // --- تم تعديل هذا الشرط ليعمل مع الحقل الجديد ---
       if (_selectedCity != null) {
-        query = query.where('workCities', arrayContains: _selectedCity);
+        query = query.where('alertCities', arrayContains: _selectedCity);
       }
+      // --- نهاية التعديل ---
 
       query = query.orderBy('createdAt', descending: true).limit(_pageSize);
 
@@ -133,7 +135,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       ),
       body: Column(
         children: [
-          // --- بداية التعديل على مربعات الاختيار ---
           Container(
             padding: const EdgeInsets.all(12),
             color: AppColors.surface,
@@ -160,7 +161,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                         value: profession.getNameByDialect('AR'),
                         child: Text(
                           profession.getNameByDialect('AR'),
-                          style: const TextStyle(fontSize: 14), // تصغير الخط
+                          style: const TextStyle(fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
                       );
@@ -195,7 +196,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                         value: city,
                         child: Text(
                           city,
-                          style: const TextStyle(fontSize: 14), // تصغير الخط
+                          style: const TextStyle(fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
                       );
@@ -211,7 +212,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               ],
             ),
           ),
-          // --- نهاية التعديل ---
           Expanded(
             child: _craftsmen.isEmpty && !_isLoading
                 ? const Center(
@@ -303,9 +303,10 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                         children: [
                           Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
                           const SizedBox(width: 4),
+                          // --- بداية الإصلاح النهائي ---
                           Expanded(
                             child: Text(
-                              craftsman.workCities.join(', '),
+                              craftsman.primaryWorkCity ?? 'غير محدد', // استخدام الحقل الصحيح
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -313,6 +314,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // --- نهاية الإصلاح النهائي ---
                         ],
                       ),
                     ],
@@ -361,7 +363,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
 
     if (currentUser == null) return;
 
-    // إظهار مؤشر التحميل
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -376,10 +377,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         user2Name: craftsman.name,
       );
 
-      // إخفاء مؤشر التحميل
       if(mounted) Navigator.pop(context);
 
-      // الانتقال إلى شاشة المحادثة
       if(mounted){
         Navigator.push(
           context,
@@ -393,10 +392,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         );
       }
     } catch (e) {
-      // إخفاء مؤشر التحميل
       if(mounted) Navigator.pop(context);
       
-      // إظهار رسالة خطأ
       if(mounted){
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('فشل بدء المحادثة: $e')),
