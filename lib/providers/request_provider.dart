@@ -1,19 +1,27 @@
-import 'dart:async';
+// lib/providers/request_provider.dart
+
+import 'dart.async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/request_model.dart';
 import '../models/user_model.dart' as user_model;
 import '../services/request_service.dart';
 
 class RequestProvider with ChangeNotifier {
   final RequestService _requestService = RequestService();
+  
   List<RequestModel> _requests = [];
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  DocumentSnapshot? _lastDocument;
   StreamSubscription? _requestsSubscription;
-
+  
   List<RequestModel> get requests => _requests;
   bool get isLoading => _isLoading;
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasMore => _hasMore;
 
-  // دالة لإنشاء طلب جديد
   Future<void> createNewRequest(RequestModel request) async {
     _isLoading = true;
     notifyListeners();
@@ -28,7 +36,6 @@ class RequestProvider with ChangeNotifier {
     }
   }
 
-  // دالة لقبول طلب
   Future<void> acceptExistingRequest(String requestId, user_model.UserModel craftsman) async {
     try {
       await _requestService.acceptRequest(requestId, craftsman);
@@ -38,41 +45,80 @@ class RequestProvider with ChangeNotifier {
     }
   }
 
-  // دالة لجلب الطلبات والاستماع لتحديثاتها
-  void listenToRequests({
+  // --- بداية التعديلات ---
+
+  // دالة لجلب الدفعة الأولى من الطلبات
+  Future<void> fetchInitialRequests({
     required String userType,
     required String userId,
     String? professionName,
-    List<String>? workCities,
-  }) {
+    String? primaryCity,
+  }) async {
+    if (_isLoading) return;
+
     _isLoading = true;
+    _hasMore = true;
+    _lastDocument = null;
+    _requests.clear();
     notifyListeners();
 
-    // إلغاء الاشتراك القديم قبل إنشاء واحد جديد
-    _requestsSubscription?.cancel();
-
-    Stream<List<RequestModel>> stream;
-
-    if (userType == 'أنا حرفي' && professionName != null && workCities != null) {
-      stream = _requestService.getCraftsmanRequestsStream(
+    try {
+      final result = await _requestService.getRequestsPaginated(
+        userType: userType,
+        userId: userId,
         professionName: professionName,
-        workCities: workCities,
+        primaryCity: primaryCity,
+        limit: 15,
       );
-    } else {
-      stream = _requestService.getClientRequestsStream(clientId: userId);
-    }
 
-    _requestsSubscription = stream.listen((requestsData) {
-      _requests = requestsData;
+      _requests = result['requests'];
+      _lastDocument = result['lastDocument'];
+      _hasMore = _requests.length == 15;
+
+    } catch (e) {
+      print('Error fetching initial requests: $e');
+    } finally {
       _isLoading = false;
       notifyListeners();
-    }, onError: (error) {
-      print('Error listening to requests: $error');
-      _isLoading = false;
-      _requests = [];
-      notifyListeners();
-    });
+    }
   }
+
+  // دالة لجلب المزيد من الطلبات عند التمرير
+  Future<void> fetchMoreRequests({
+    required String userType,
+    required String userId,
+    String? professionName,
+    String? primaryCity,
+  }) async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final result = await _requestService.getRequestsPaginated(
+        userType: userType,
+        userId: userId,
+        professionName: professionName,
+        primaryCity: primaryCity,
+        limit: 15,
+        lastDocument: _lastDocument,
+      );
+
+      final newRequests = result['requests'];
+      _requests.addAll(newRequests);
+      _lastDocument = result['lastDocument'];
+      _hasMore = newRequests.length == 15;
+
+    } catch (e) {
+      print('Error fetching more requests: $e');
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  // --- نهاية التعديلات ---
 
   @override
   void dispose() {
