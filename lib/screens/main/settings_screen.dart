@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:package_info_plus/package_info_plus.dart'; // تم تعطيله لتجنب الأخطاء
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../constants/app_colors.dart';
@@ -14,8 +13,7 @@ import '../../models/user_model.dart';
 import '../content/privacy_policy_screen.dart';
 import '../content/about_us_screen.dart';
 import '../content/contact_us_screen.dart';
-import '../auth/register_screen.dart'; // للتعديل على الملف الشخصي
-import '../content/terms_of_service_screen.dart'; // استيراد شروط الاستخدام
+import '../auth/register_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,8 +24,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final bool _isDarkMode = false;
-  final String _selectedLanguage = 'العربية'; // اللغة الوحيدة المتاحة
-  final String _appVersion = '1.0.0'; // قيمة افتراضية
+  final String _appVersion = '1.0.0';
 
   @override
   Widget build(BuildContext context) {
@@ -39,19 +36,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text(AppStrings.settings),
         backgroundColor: AppColors.primaryColor,
       ),
-      // --- تم إضافة Directionality هنا ---
+      // --- بداية التعديل: ضمان اتجاه الشاشة من اليمين لليسار ---
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: ListView(
           children: [
-            // User Mode Section
             if (user != null) ...[
               _buildSectionHeader(AppStrings.currentMode),
               _buildModeCard(user, authProvider),
               const Divider(height: 32),
             ],
 
-            // App Settings
             _buildSectionHeader(AppStrings.settings),
             _buildLanguageDropdown(),
             _buildSwitchTile(
@@ -59,7 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: AppStrings.darkMode,
               value: _isDarkMode,
               onChanged: (value) {
-                // --- تم تعديل الوظيفة لعرض رسالة ---
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('الوضع الليلي غير متاح حاليًا')),
                 );
@@ -74,7 +68,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(height: 32),
 
-            // Legal & Info
             _buildSectionHeader('القانونية والمعلومات'),
             _buildSettingsTile(
               icon: Icons.privacy_tip,
@@ -84,18 +77,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const PrivacyPolicyScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildSettingsTile(
-              icon: Icons.gavel, // أيقونة أفضل لشروط الاستخدام
-              title: AppStrings.termsOfService,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TermsOfServiceScreen(),
                   ),
                 );
               },
@@ -126,7 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(height: 32),
 
-            // Share & Rate
             _buildSectionHeader('مشاركة وتقييم التطبيق'),
             _buildSettingsTile(
               icon: Icons.share,
@@ -140,14 +120,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const Divider(height: 32),
 
-            // Account
             if (user != null) ...[
               _buildSectionHeader(AppStrings.accountType),
               _buildSettingsTile(
                 icon: Icons.edit,
                 title: AppStrings.editProfile,
                 onTap: () {
-                  // --- تم إصلاح وظيفة الزر هنا ---
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -184,6 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+      // --- نهاية التعديل ---
     );
   }
 
@@ -255,6 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (user.userType != 'supplier') ...[
               const SizedBox(height: 16),
+              // --- بداية تعديل القائمة المنسدلة ---
               DropdownButtonFormField<String>(
                 value: user.userType,
                 decoration: const InputDecoration(
@@ -262,14 +242,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12),
                 ),
+                isExpanded: true,
                 items: const [
                   DropdownMenuItem(
                     value: 'client',
-                    child: Text(AppStrings.clientMode),
+                    child: Text('وضع العميل'),
                   ),
                   DropdownMenuItem(
                     value: 'craftsman',
-                    child: Text(AppStrings.craftsmanMode),
+                    child: Text('وضع الحرفي'),
                   ),
                 ],
                 onChanged: (newValue) {
@@ -278,6 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 },
               ),
+              // --- نهاية تعديل القائمة المنسدلة ---
             ],
           ],
         ),
@@ -331,20 +313,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: DropdownButtonFormField<String>(
-        value: _selectedLanguage,
+        value: 'العربية',
         decoration: const InputDecoration(
           labelText: AppStrings.language,
           icon: Icon(Icons.language, color: AppColors.primaryColor),
           border: UnderlineInputBorder(),
         ),
-        // --- تم تعديل القائمة هنا ---
+        // --- بداية تعديل قائمة اللغات ---
         items: const [
           DropdownMenuItem(
             value: 'العربية',
             child: Text('العربية'),
           ),
         ],
-        onChanged: null, // تعطيل التغيير بما أنها اللغة الوحيدة
+        // --- نهاية تعديل قائمة اللغات ---
+        onChanged: (value) {
+          // لا يوجد إجراء مطلوب لأن العربية هي الخيار الوحيد
+        },
       ),
     );
   }
