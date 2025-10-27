@@ -16,24 +16,47 @@ class RequestService {
     }
   }
 
-  Stream<List<RequestModel>> getCraftsmanRequestsStream({
-    required String professionName,
-    // --- بداية التعديل ---
-    required List<String> alertCities,
-    // --- نهاية التعديل ---
-  }) {
-    return _firestore
-        .collection('requests')
-        .where('professionName', isEqualTo: professionName)
-        // --- بداية التعديل ---
-        .where('city', whereIn: alertCities)
-        // --- نهاية التعديل ---
-        .where('status', isEqualTo: 'pending')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => RequestModel.fromFirestore(doc)).toList();
-    });
+  // --- بداية الإضافة: الدالة المفقودة ---
+  Future<Map<String, dynamic>> getRequestsPaginated({
+    required String userType,
+    required String userId,
+    required int limit,
+    String? professionName,
+    String? primaryCity,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    Query query;
+
+    if (userType == 'craftsman' && professionName != null && primaryCity != null) {
+      query = _firestore
+          .collection('requests')
+          .where('profession', isEqualTo: professionName)
+          .where('city', isEqualTo: primaryCity) // البحث في مدينة العمل الأساسية فقط
+          .where('status', isEqualTo: 'pending')
+          .orderBy('createdAt', descending: true);
+    } else {
+      query = _firestore
+          .collection('requests')
+          .where('clientId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true);
+    }
+
+    query = query.limit(limit);
+
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+
+    final snapshot = await query.get();
+    final requests = snapshot.docs.map((doc) => RequestModel.fromFirestore(doc)).toList();
+    final newLastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+
+    return {
+      'requests': requests,
+      'lastDocument': newLastDocument,
+    };
   }
+  // --- نهاية الإضافة ---
 
   Stream<List<RequestModel>> getClientRequestsStream({required String clientId}) {
     return _firestore
