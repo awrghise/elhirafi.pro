@@ -1,5 +1,3 @@
-// lib/models/user_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
@@ -9,12 +7,9 @@ class UserModel {
   final String phoneNumber;
   final String userType;
   final String profileImageUrl;
-  final String? professionId;
   final String? professionName;
-  // --- بداية التعديل ---
-  final String? primaryCity;       // مدينة العمل الأساسية (واحدة)
-  final List<String> alertCities; // مدن تلقي التنبيهات (متعددة)
-  // --- نهاية التعديل ---
+  final List<String> alertCities;
+  final String? primaryWorkCity; // <-- إعادة الحقل المفقود
   final String? country;
   final bool? isAvailable;
   final double rating;
@@ -28,12 +23,9 @@ class UserModel {
     required this.phoneNumber,
     required this.userType,
     this.profileImageUrl = '',
-    this.professionId,
     this.professionName,
-    // --- بداية التعديل ---
-    this.primaryCity,
     this.alertCities = const [],
-    // --- نهاية التعديل ---
+    this.primaryWorkCity, // <-- إعادة الحقل المفقود
     this.country,
     this.isAvailable,
     this.rating = 0.0,
@@ -50,12 +42,9 @@ class UserModel {
       phoneNumber: data['phoneNumber'] ?? '',
       userType: data['userType'] ?? 'client',
       profileImageUrl: data['profileImageUrl'] ?? '',
-      professionId: data['professionId'],
       professionName: data['professionName'],
-      // --- بداية التعديل ---
-      primaryCity: data['primaryCity'],
       alertCities: List<String>.from(data['alertCities'] ?? []),
-      // --- نهاية التعديل ---
+      primaryWorkCity: data['primaryWorkCity'], // <-- إعادة الحقل المفقود
       country: data['country'],
       isAvailable: data['isAvailable'],
       rating: (data['rating'] ?? 0.0).toDouble(),
@@ -64,13 +53,6 @@ class UserModel {
     );
   }
 
-  // Getters للتوافق مع الكود القديم (سيتم إزالتها لاحقًا)
-  String get uid => id;
-  String get displayName => name;
-  String get profession => professionName ?? '';
-  List<String> get cities => alertCities; // توجيه Getter القديم للحقل الجديد
-  int? get yearsOfExperience => null;
-
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
@@ -78,12 +60,9 @@ class UserModel {
       'phoneNumber': phoneNumber,
       'userType': userType,
       'profileImageUrl': profileImageUrl,
-      'professionId': professionId,
       'professionName': professionName,
-      // --- بداية التعديل ---
-      'primaryCity': primaryCity,
       'alertCities': alertCities,
-      // --- نهاية التعديل ---
+      'primaryWorkCity': primaryWorkCity, // <-- إعادة الحقل المفقود
       'country': country,
       'isAvailable': isAvailable,
       'rating': rating,
@@ -91,7 +70,7 @@ class UserModel {
       'createdAt': createdAt,
     };
   }
-
+  
   UserModel copyWith({
     String? id,
     String? name,
@@ -99,12 +78,9 @@ class UserModel {
     String? phoneNumber,
     String? userType,
     String? profileImageUrl,
-    String? professionId,
     String? professionName,
-    // --- بداية التعديل ---
-    String? primaryCity,
     List<String>? alertCities,
-    // --- نهاية التعديل ---
+    String? primaryWorkCity, // <-- إعادة الحقل المفقود
     String? country,
     bool? isAvailable,
     double? rating,
@@ -118,12 +94,9 @@ class UserModel {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       userType: userType ?? this.userType,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      professionId: professionId ?? this.professionId,
       professionName: professionName ?? this.professionName,
-      // --- بداية التعديل ---
-      primaryCity: primaryCity ?? this.primaryCity,
       alertCities: alertCities ?? this.alertCities,
-      // --- نهاية التعديل ---
+      primaryWorkCity: primaryWorkCity ?? this.primaryWorkCity, // <-- إعادة الحقل المفقود
       country: country ?? this.country,
       isAvailable: isAvailable ?? this.isAvailable,
       rating: rating ?? this.rating,
