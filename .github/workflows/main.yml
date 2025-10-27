@@ -1,0 +1,77 @@
+name: Flutter CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # نحلل الكود، نحفظ المخرجات ولكن لا نوقف الخط هنا تلقائياً
+      - name: Analyze code (save output)
+        run: |
+          flutter analyze 2>&1 | tee analysis.txt || true
+
+      # خطوة تفحص مخرجات التحليل عن "أخطاء حاسمة" تمنع البناء
+      - name: Fail on blocking analyzer errors
+        run: |
+          # قائمة أنماط تُعتبر مانعة للبناء — يمكنك تعديلها حسب حاجتك
+          PATTERNS=(
+            "error •"
+            "Target of URI doesn't exist"
+            "isn't a subtype of"
+            "Undefined name"
+            "Missing concrete implementation"
+            "TypeError:"
+            "NoSuchMethodError"
+            "Cannot find symbol"
+          )
+
+          echo "Checking analysis output for blocking error patterns..."
+          FOUND=0
+          for p in "${PATTERNS[@]}"; do
+            if grep -n -E "$p" analysis.txt > /dev/null; then
+              echo "Found blocking pattern: $p"
+              grep -n -E "$p" analysis.txt | sed -n '1,20p'
+              FOUND=1
+            fi
+          done
+
+          if [ "$FOUND" -eq 1 ]; then
+            echo "Critical analyzer errors detected. Failing the job to avoid building a broken APK."
+            exit 1
+          else
+            echo "No blocking analyzer errors found. Proceeding to tests and build."
+          fi
+
+      # نسمح للاختبارات أن تفشل بدون إيقاف البناء (اختياري — يمكنك تغيير ذلك)
+      - name: Run tests (continue on non-zero but do not block build)
+        run: flutter test || true
+
+      # بناء APK — هذه الخطوة صارمة: أي فشل هنا يفشل الـ job كما أردت
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

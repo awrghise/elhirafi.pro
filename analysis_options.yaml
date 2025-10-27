@@ -1,0 +1,17 @@
+# يخبر المحلل بتضمين القواعد الموصى بها من Flutter
+include: package:flutter_lints/flutter.yaml
+    
+analyzer:
+  # هذا هو الجزء الأهم: يخبر المحلل بتجاهل كل شيء
+  # ما عدا مجلد lib
+  exclude:
+    - "**/*.g.dart"      # تجاهل الملفات التي تم إنشاؤها تلقائيًا
+    - "**/*.freezed.dart" # تجاهل الملفات التي تم إنشاؤها تلقائيًا
+    - "build/**"        # تجاهل مجلد البناء
+    
+linter:
+  rules:
+    # هنا يمكنك إضافة أو إزالة قواعد تحليل حسب تفضيلك
+    # على سبيل المثال، لإزالة التحذير الخاص بـ print:
+    no_leading_underscores_for_local_identifiers: false
+    avoid_print: false

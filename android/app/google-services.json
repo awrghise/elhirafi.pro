@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "745606809547",
+    "project_id": "elsane3-95c91",
+    "storage_bucket": "elsane3-95c91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:745606809547:android:3c2574edfff1748928984e",
+        "android_client_info": {
+          "package_name": "com.elsane3.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWmLF6APjRWjHNubZpXZ_jQgWAeN3o7nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
