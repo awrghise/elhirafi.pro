@@ -14,7 +14,6 @@ import '../../data/professions_data.dart';
 import '../../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
-  // --- بداية الخصائص التي تم إصلاحها وإعادتها ---
   final bool isEditing;
   final UserModel? userToEdit;
 
@@ -23,7 +22,6 @@ class RegisterScreen extends StatefulWidget {
     this.isEditing = false,
     this.userToEdit,
   });
-  // --- نهاية الخصائص التي تم إصلاحها ---
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -39,7 +37,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _userType;
   String? _selectedProfession;
   String? _selectedCountry;
-  List<String> _selectedWorkCities = [];
+  // --- بداية التعديل ---
+  String? _selectedPrimaryCity; // مدينة واحدة فقط
+  // --- نهاية التعديل ---
   File? _image;
   String? _networkImageUrl;
 
@@ -57,7 +57,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _userType = user.userType;
       _selectedProfession = user.professionName;
       _selectedCountry = user.country;
-      _selectedWorkCities = List.from(user.workCities);
+      // --- بداية التعديل ---
+      _selectedPrimaryCity = user.primaryCity;
+      // --- نهاية التعديل ---
       _networkImageUrl = user.profileImageUrl;
     } else {
       _userType = AppStrings.client;
@@ -83,35 +85,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _showCitySelectionDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return _CitySelectionDialog(
-          selectedCountry: _selectedCountry,
-          initialSelectedCities: _selectedWorkCities,
-          onCitiesSelected: (cities) {
-            setState(() {
-              _selectedWorkCities = cities;
-            });
-          },
-        );
-      },
-    );
-  }
-
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    if (_userType == AppStrings.craftsman && (_selectedProfession == null || _selectedWorkCities.isEmpty || _selectedCountry == null)) {
+    // --- بداية التعديل: تحديث التحقق ---
+    if (_userType == AppStrings.craftsman && (_selectedProfession == null || _selectedPrimaryCity == null || _selectedCountry == null)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي')),
+          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي (بما في ذلك المدينة الأساسية)')),
         );
       }
       return;
     }
+    // --- نهاية التعديل ---
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
@@ -122,7 +109,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'phoneNumber': _phoneController.text.trim(),
           'userType': _userType,
           'professionName': _selectedProfession,
-          'workCities': _selectedWorkCities,
+          // --- بداية التعديل ---
+          'primaryCity': _selectedPrimaryCity,
+          // --- نهاية التعديل ---
           'country': _selectedCountry,
         };
         await authProvider.updateUserProfile(widget.userToEdit!.id, updates);
@@ -139,7 +128,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           phoneNumber: _phoneController.text.trim(),
           userType: _userType!,
           professionName: _selectedProfession,
-          workCities: _selectedWorkCities,
+          // --- بداية التعديل ---
+          primaryCity: _selectedPrimaryCity,
+          // --- نهاية التعديل ---
           country: _selectedCountry,
           profileImage: _image,
         );
@@ -215,7 +206,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       _buildProfessionDropdown(),
                       const SizedBox(height: 16),
-                      _buildWorkCityDropdown(),
+                      // --- بداية التعديل ---
+                      _buildPrimaryCityDropdown(), // استخدام قائمة منسدلة لمدينة واحدة
+                      // --- نهاية التعديل ---
                     ],
                     const SizedBox(height: 24),
                     CustomButton(
@@ -311,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onChanged: (newValue) {
             setState(() {
               _selectedCountry = newValue;
-              _selectedWorkCities.clear();
+              _selectedPrimaryCity = null; // إعادة تعيين المدينة عند تغيير الدولة
             });
           },
         ),
@@ -347,159 +340,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildWorkCityDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: _selectedCountry == null ? null : _showCitySelectionDialog,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.grey),
-              color: _selectedCountry == null ? Colors.grey[200] : Colors.transparent,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedWorkCities.isEmpty ? AppStrings.selectWorkCities : _selectedWorkCities.join(', '),
-                    style: TextStyle(
-                      color: _selectedWorkCities.isEmpty ? Colors.grey[600] : Colors.black,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down, color: Colors.grey),
-              ],
-            ),
-          ),
-        ),
-        if (_selectedWorkCities.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Wrap(
-              spacing: 8.0,
-              runSpacing: 4.0,
-              children: _selectedWorkCities
-                  .map((city) => Chip(
-                        label: Text(city, style: const TextStyle(fontSize: 12)),
-                        onDeleted: () {
-                          setState(() {
-                            _selectedWorkCities.remove(city);
-                          });
-                        },
-                      ))
-                  .toList(),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _CitySelectionDialog extends StatefulWidget {
-  final String? selectedCountry;
-  final List<String> initialSelectedCities;
-  final Function(List<String>) onCitiesSelected;
-
-  const _CitySelectionDialog({
-    this.selectedCountry,
-    required this.initialSelectedCities,
-    required this.onCitiesSelected,
-  });
-
-  @override
-  State<_CitySelectionDialog> createState() => _CitySelectionDialogState();
-}
-
-class _CitySelectionDialogState extends State<_CitySelectionDialog> {
-  late List<String> _tempSelectedCities;
-  String _searchQuery = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _tempSelectedCities = List.from(widget.initialSelectedCities);
-  }
-
-  List<String> get _filteredCities {
-    if (widget.selectedCountry == null) {
-      return [];
-    }
-    final cities = CitiesData.getRegions(widget.selectedCountry!);
-    if (_searchQuery.isEmpty) {
-      return cities;
-    }
-    return cities.where((city) => city.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text(AppStrings.selectWorkCities),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: const InputDecoration(
-                  labelText: AppStrings.search,
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _filteredCities.length,
-                itemBuilder: (context, index) {
-                  final city = _filteredCities[index];
-                  final isSelected = _tempSelectedCities.contains(city);
-                  return CheckboxListTile(
-                    title: Text(city, style: const TextStyle(fontSize: 14)),
-                    value: isSelected,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          _tempSelectedCities.add(city);
-                        } else {
-                          _tempSelectedCities.remove(city);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+  // --- بداية التعديل: قائمة منسدلة لمدينة واحدة ---
+  Widget _buildPrimaryCityDropdown() {
+    final regions = _selectedCountry != null ? CitiesData.getRegions(_selectedCountry!) : <String>[];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey),
+        color: _selectedCountry == null ? Colors.grey[200] : Colors.transparent,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedPrimaryCity,
+          isExpanded: true,
+          hint: const Text('اختر مدينة العمل الأساسية'),
+          items: regions.map((String region) {
+            return DropdownMenuItem<String>(
+              value: region,
+              child: Text(region, style: const TextStyle(fontSize: 14)),
+            );
+          }).toList(),
+          onChanged: _selectedCountry == null ? null : (newValue) {
+            setState(() {
+              _selectedPrimaryCity = newValue;
+            });
+          },
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(AppStrings.cancel),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            widget.onCitiesSelected(_tempSelectedCities);
-            Navigator.of(context).pop();
-          },
-          child: const Text(AppStrings.save),
-        ),
-      ],
     );
   }
+  // --- نهاية التعديل ---
 }
