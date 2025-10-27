@@ -24,12 +24,11 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ScrollController _scrollController = ScrollController();
   
-  List<UserModel> _craftsmen = [];
+  final List<UserModel> _craftsmen = [];
   DocumentSnapshot? _lastDocument;
   bool _isLoading = false;
-  bool _isLoadingMore = false;
   bool _hasMore = true;
-  final int _pageSize = 15;
+  final int _pageSize = 20;
 
   String? _selectedProfession;
   String? _selectedCity;
@@ -37,89 +36,88 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCraftsmen(isInitial: true);
+    _loadCraftsmen();
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
-      if (!_isLoadingMore && _hasMore) {
+      if (!_isLoading && _hasMore) {
         _loadCraftsmen();
       }
     }
   }
 
-  Future<void> _loadCraftsmen({bool isInitial = false}) async {
-    if (isInitial) {
-      setState(() {
-        _isLoading = true;
-        _craftsmen.clear();
-        _lastDocument = null;
-        _hasMore = true;
-      });
-    } else {
-      if (_isLoadingMore || !_hasMore) return;
-      setState(() => _isLoadingMore = true);
-    }
+  Future<void> _loadCraftsmen() async {
+    if (_isLoading || !_hasMore) return;
+
+    setState(() => _isLoading = true);
 
     try {
       Query query = _firestore
           .collection('users')
-          .where('userType', isEqualTo: 'craftsman')
-          .where('isAvailable', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .limit(_pageSize);
+          .where('userType', isEqualTo: AppStrings.craftsman)
+          .where('isAvailable', isEqualTo: true);
 
       if (_selectedProfession != null) {
         query = query.where('professionName', isEqualTo: _selectedProfession);
       }
 
       if (_selectedCity != null) {
-        // الحرفي يظهر إذا كانت مدينته الأساسية هي المدينة المبحوث عنها
-        // أو إذا كانت المدينة المبحوث عنها ضمن مدن التنبيهات الخاصة به
-        query = query.where('alertCities', arrayContains: _selectedCity);
+        query = query.where('workCities', arrayContains: _selectedCity);
       }
 
-      if (_lastDocument != null && !isInitial) {
+      query = query.orderBy('createdAt', descending: true).limit(_pageSize);
+
+      if (_lastDocument != null) {
         query = query.startAfterDocument(_lastDocument!);
       }
 
       final snapshot = await query.get();
 
       if (snapshot.docs.isEmpty) {
-        setState(() => _hasMore = false);
-      } else {
-        final newCraftsmen = snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+        if(mounted){
+          setState(() {
+            _hasMore = false;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final newCraftsmen = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .toList();
+
+      if(mounted){
         setState(() {
           _craftsmen.addAll(newCraftsmen);
           _lastDocument = snapshot.docs.last;
-          _hasMore = newCraftsmen.length == _pageSize;
+          _hasMore = snapshot.docs.length == _pageSize;
+          _isLoading = false;
         });
       }
     } catch (e) {
       print('Error loading craftsmen: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الحرفيين: ${e.toString()}')),
-        );
+      if(mounted){
+        setState(() => _isLoading = false);
       }
-    } finally {
-      setState(() {
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
     }
   }
 
   void _resetAndReload() {
-    _loadCraftsmen(isInitial: true);
+    setState(() {
+      _craftsmen.clear();
+      _lastDocument = null;
+      _hasMore = true;
+    });
+    _loadCraftsmen();
   }
 
   @override
@@ -135,121 +133,120 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       ),
       body: Column(
         children: [
-          _buildFilterSection(availableCities),
-          Expanded(
-            child: _buildCraftsmenList(currentUser),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterSection(List<String> availableCities) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: AppColors.surface,
-      child: Column(
-        children: [
-          DropdownButtonFormField<String>(
-            value: _selectedProfession,
-            decoration: InputDecoration(
-              labelText: 'اختر المهنة',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('جميع المهن')),
-              ...ProfessionsData().getAllProfessions().map((profession) {
-                return DropdownMenuItem(
-                  value: profession.getNameByDialect('AR'),
-                  child: Text(profession.getNameByDialect('AR')),
-                );
-              }),
-            ],
-            onChanged: (value) {
-              setState(() => _selectedProfession = value);
-              _resetAndReload();
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _selectedCity,
-            decoration: InputDecoration(
-              labelText: 'اختر المدينة',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('جميع المدن')),
-              ...availableCities.map((city) {
-                return DropdownMenuItem(
-                  value: city,
-                  child: Text(city),
-                );
-              }),
-            ],
-            onChanged: (value) {
-              setState(() => _selectedCity = value);
-              _resetAndReload();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCraftsmenList(UserModel? currentUser) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_craftsmen.isEmpty) {
-      return Center(
-        child: RefreshIndicator(
-          onRefresh: () async => _resetAndReload(),
-          child: ListView(
-            children: const [
-              SizedBox(height: 150),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.person_search, size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'لا يوجد حرفيون متاحون بالفلتر الحالي',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+          // --- بداية التعديل على مربعات الاختيار ---
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: AppColors.surface,
+            child: Column(
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _selectedProfession,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'اختر المهنة',
+                    prefixIcon: const Icon(Icons.work_outline, size: 20),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('جميع المهن')),
+                    ...ProfessionsData().getAllProfessions().map((profession) {
+                      return DropdownMenuItem(
+                        value: profession.getNameByDialect('AR'),
+                        child: Text(
+                          profession.getNameByDialect('AR'),
+                          style: const TextStyle(fontSize: 14), // تصغير الخط
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }),
                   ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProfession = value;
+                    });
+                    _resetAndReload();
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedCity,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'اختر المدينة',
+                    prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('جميع المدن')),
+                    ...availableCities.map((city) {
+                      return DropdownMenuItem(
+                        value: city,
+                        child: Text(
+                          city,
+                          style: const TextStyle(fontSize: 14), // تصغير الخط
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCity = value;
+                    });
+                    _resetAndReload();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    }
+          // --- نهاية التعديل ---
+          Expanded(
+            child: _craftsmen.isEmpty && !_isLoading
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_search, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'لا يوجد حرفيون متاحون بالفلتر الحالي',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _craftsmen.length + (_hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _craftsmen.length) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
 
-    return RefreshIndicator(
-      onRefresh: () async => _resetAndReload(),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        itemCount: _craftsmen.length + (_isLoadingMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _craftsmen.length) {
-            return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-          }
-          final craftsman = _craftsmen[index];
-          return _buildCraftsmanCard(craftsman, currentUser?.userType == 'client');
-        },
+                      final craftsman = _craftsmen[index];
+                      return _buildCraftsmanCard(craftsman, currentUser?.userType == AppStrings.client);
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -266,14 +263,18 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: AppColors.primaryColor,
+                  backgroundColor: AppColors.primaryColor.withOpacity(0.1),
                   backgroundImage: craftsman.profileImageUrl.isNotEmpty
                       ? NetworkImage(craftsman.profileImageUrl)
                       : null,
                   child: craftsman.profileImageUrl.isEmpty
                       ? Text(
                           craftsman.name.isNotEmpty ? craftsman.name[0].toUpperCase() : 'U',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryColor,
+                          ),
                         )
                       : null,
                 ),
@@ -284,12 +285,18 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     children: [
                       Text(
                         craftsman.name,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         craftsman.professionName ?? 'حرفي',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -298,8 +305,11 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              craftsman.primaryCity ?? 'غير محدد',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              craftsman.workCities.join(', '),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -315,17 +325,25 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: isClient ? () => _contactCraftsman(context, craftsman) : null,
-                    icon: const Icon(Icons.chat, size: 18),
+                    onPressed: isClient ? () => _contactCraftsman(craftsman) : null,
+                    icon: const Icon(Icons.chat_outlined, size: 18),
                     label: const Text('محادثة'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryColor,
+                      side: const BorderSide(color: AppColors.primaryColor),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: isClient ? () => _callCraftsman(context, craftsman) : null,
-                    icon: const Icon(Icons.phone, size: 18),
+                  child: ElevatedButton.icon(
+                    onPressed: isClient ? () => _callCraftsman(craftsman) : null,
+                    icon: const Icon(Icons.phone_outlined, size: 18),
                     label: const Text('اتصال'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -336,12 +354,19 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     );
   }
 
-  void _contactCraftsman(BuildContext context, UserModel craftsman) async {
+  void _contactCraftsman(UserModel craftsman) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final currentUser = authProvider.user;
 
     if (currentUser == null) return;
+
+    // إظهار مؤشر التحميل
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
 
     try {
       final chatId = await chatProvider.getOrCreateChat(
@@ -350,7 +375,12 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         user2Id: craftsman.id,
         user2Name: craftsman.name,
       );
-      if (mounted) {
+
+      // إخفاء مؤشر التحميل
+      if(mounted) Navigator.pop(context);
+
+      // الانتقال إلى شاشة المحادثة
+      if(mounted){
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -363,15 +393,19 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      // إخفاء مؤشر التحميل
+      if(mounted) Navigator.pop(context);
+      
+      // إظهار رسالة خطأ
+      if(mounted){
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل بدء المحادثة: ${e.toString()}')),
+          SnackBar(content: Text('فشل بدء المحادثة: $e')),
         );
       }
     }
   }
 
-  void _callCraftsman(BuildContext context, UserModel craftsman) async {
+  void _callCraftsman(UserModel craftsman) async {
     final url = Uri.parse('tel:${craftsman.phoneNumber}');
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
