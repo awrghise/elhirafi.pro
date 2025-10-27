@@ -1,6 +1,7 @@
 // lib/screens/auth/register_screen.dart
 
-import 'dart.io';
+import 'dart-async';
+import 'dart:io'; // <-- إعادة إضافة المكتبة المفقودة
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import '../../data/cities_data.dart';
 import '../../data/professions_data.dart';
 import '../../models/user_model.dart';
 
+// ... باقي الكود يبقى كما هو بدون أي تغيير ...
 class RegisterScreen extends StatefulWidget {
   final bool isEditing;
   final UserModel? userToEdit;
@@ -98,7 +100,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     try {
       if (widget.isEditing) {
-        // --- بداية التعديل: استخدام الدالة الجديدة ---
         Map<String, dynamic> updates = {
           'name': _nameController.text.trim(),
           'phoneNumber': _phoneController.text.trim(),
@@ -109,9 +110,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await authProvider.updateUserProfileWithImage(
           userId: widget.userToEdit!.id,
           data: updates,
-          newImage: _image, // تمرير الصورة الجديدة
+          newImage: _image,
         );
-        // --- نهاية التعديل ---
         if(mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح')),
@@ -194,12 +194,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (value) => value!.isEmpty ? AppStrings.phoneRequired : null,
                     ),
                     const SizedBox(height: 20),
-                    // --- بداية التعديل: إخفاء القائمة في وضع التعديل ---
                     if (widget.isEditing)
                       _buildStaticInfoBox('نوع الحساب', _userType ?? '')
                     else
                       _buildUserTypeSelector(),
-                    // --- نهاية التعديل ---
                     const SizedBox(height: 16),
                     if (_userType == AppStrings.craftsman) ...[
                       _buildCountryDropdown(),
@@ -220,7 +218,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // --- بداية الإضافة: ودجت لعرض المعلومات الثابتة ---
   Widget _buildStaticInfoBox(String label, String value) {
     return Container(
       width: double.infinity,
@@ -246,7 +243,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-  // --- نهاية الإضافة ---
 
   Widget _buildImagePicker() {
     return Center(
