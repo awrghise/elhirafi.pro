@@ -7,22 +7,36 @@ import '../models/message_model.dart';
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // الحصول على محادثات المستخدم
-  Stream<List<ChatModel>> getUserChats(String userId) {
-    return _firestore
+  // --- بداية التعديل: دالة جديدة لجلب المحادثات مع ترقيم الصفحات ---
+  Future<Map<String, dynamic>> getUserChatsPaginated({
+    required String userId,
+    required int limit,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    Query query = _firestore
         .collection('chats')
         .where('participants', arrayContains: userId)
-        // --- بداية التعديل الوحيد ---
-        // تم تغيير الفرز ليطابق الفهرس الذي تم إنشاؤه
-        .orderBy('lastMessageTime', descending: false) 
-        // --- نهاية التعديل الوحيد ---
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatModel.fromFirestore(doc))
-            .toList());
-  }
+        .orderBy('lastMessageTime', descending: true) // سنعتمد الترتيب التنازلي (الأحدث أولاً)
+        .limit(limit);
 
-  // الحصول على رسائل محادثة معينة (استماع عند الطلب)
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument);
+    }
+
+    final snapshot = await query.get();
+
+    final chats = snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList();
+    
+    // إرجاع آخر مستند إذا كانت القائمة غير فارغة
+    final newLastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+
+    return {
+      'chats': chats,
+      'lastDocument': newLastDocument,
+    };
+  }
+  // --- نهاية التعديل ---
+
   Stream<List<MessageModel>> getChatMessages(String chatId) {
     return _firestore
         .collection('chats')
@@ -35,7 +49,6 @@ class ChatService {
             .toList());
   }
 
-  // إرسال رسالة جديدة
   Future<void> sendMessage({
     required String chatId,
     required String senderId,
@@ -54,7 +67,6 @@ class ChatService {
         timestamp: DateTime.now(),
       );
 
-      // إضافة الرسالة إلى مجموعة الرسائل الفرعية
       await _firestore
           .collection('chats')
           .doc(chatId)
@@ -62,7 +74,6 @@ class ChatService {
           .doc(message.id)
           .set(message.toFirestore());
 
-      // تحديث بيانات المحادثة الرئيسية (آخر رسالة ووقتها)
       await _firestore.collection('chats').doc(chatId).update({
         'lastMessageContent': content,
         'lastMessageTime': Timestamp.fromDate(message.timestamp),
@@ -74,14 +85,12 @@ class ChatService {
     }
   }
 
-  // بدء محادثة جديدة أو الحصول على محادثة موجودة
   Future<String> getOrCreateChat({
     required String user1Id,
     required String user1Name,
     required String user2Id,
     required String user2Name,
   }) async {
-    // بناء معرف المحادثة بترتيب أبجدي لضمان التوحيد
     String chatId = user1Id.compareTo(user2Id) < 0
         ? '${user1Id}_${user2Id}'
         : '${user2Id}_${user1Id}';
@@ -90,12 +99,11 @@ class ChatService {
     final docSnapshot = await chatDoc.get();
 
     if (!docSnapshot.exists) {
-      // إنشاء محادثة جديدة إذا لم تكن موجودة
       final newChat = ChatModel(
         id: chatId,
         participants: [user1Id, user2Id],
         participantNames: {user1Id: user1Name, user2Id: user2Name},
-        lastMessageContent: '',
+        lastMessageContent: 'تم إنشاء المحادثة',
         lastMessageTime: DateTime.now(),
         lastMessageSenderId: '',
       );
