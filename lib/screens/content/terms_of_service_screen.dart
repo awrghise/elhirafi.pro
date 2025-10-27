@@ -1,3 +1,5 @@
+// lib/screens/content/terms_of_service_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -30,29 +32,33 @@ class TermsOfServiceScreen extends StatelessWidget {
             );
           }
 
-          return Markdown(
-            data: snapshot.data ?? '',
-            styleSheet: MarkdownStyleSheet(
-              h1: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
-              ),
-              h2: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimaryColor,
-              ),
-              p: const TextStyle(
-                fontSize: 16,
-                height: 1.6,
-                color: AppColors.textPrimaryColor,
+          // --- هذا هو التعديل الوحيد المطلوب ---
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Markdown(
+              data: snapshot.data ?? '',
+              styleSheet: MarkdownStyleSheet(
+                h1: const TextStyle(
+                  fontSize: 22, // تصغير حجم الخط
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryColor,
+                ),
+                h2: const TextStyle(
+                  fontSize: 18, // تصغير حجم الخط
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimaryColor,
+                ),
+                p: const TextStyle(
+                  fontSize: 14, // تصغير حجم الخط
+                  height: 1.6,
+                  color: AppColors.textPrimaryColor,
+                ),
               ),
             ),
           );
+          // --- نهاية التعديل ---
         },
       ),
     );
   }
 }
-
