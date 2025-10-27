@@ -1,10 +1,14 @@
+// lib/screens/main/home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/app_colors.dart';
-import '../../constants/app_strings.dart';
-import '../../providers/auth_provider.dart';
-import '../../widgets/banner_ad_widget.dart';
-import 'settings_screen.dart';
+import 'package:alsana_alharfiyin/models/user_model.dart';
+import 'package:alsana_alharfiyin/providers/auth_provider.dart';
+import 'package:alsana_alharfiyin/constants/app_colors.dart';
+import 'package:alsana_alharfiyin/constants/app_strings.dart'; // <-- ١. استيراد الثوابت
+import 'package:alsana_alharfiyin/widgets/banner_ad_widget.dart';
+import 'package:alsana_alharfiyin/services/store_service.dart';
+import 'package:alsana_alharfiyin/models/product_model.dart';
 import 'package:share_plus/share_plus.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -12,7 +16,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
 
     if (user == null) {
       return const Scaffold(
@@ -20,558 +25,9 @@ class HomeScreen extends StatelessWidget {
       );
     }
 
-    // Route to the correct dashboard based on user type
-    switch (user.userType) {
-      case 'client':
-        return const _ClientDashboard();
-      case 'craftsman':
-        return const _CraftsmanDashboard();
-      case 'supplier':
-        return const _SupplierDashboard();
-      default:
-        return const Scaffold(
-          body: Center(child: Text('Unknown user type')),
-        );
-    }
-  }
-}
-
-// CLIENT DASHBOARD
-class _ClientDashboard extends StatefulWidget {
-  const _ClientDashboard();
-
-  @override
-  State<_ClientDashboard> createState() => _ClientDashboardState();
-}
-
-class _ClientDashboardState extends State<_ClientDashboard> {
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.clientDashboardTitle),
-        backgroundColor: AppColors.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () => _shareApp(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.surfaceColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن حرفي أو خدمة...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.mic, color: Colors.white, size: 20),
-                    onPressed: () {
-                      // TODO: Implement voice search
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('البحث الصوتي قريباً')),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Main Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Welcome Card
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: AppColors.primaryColor,
-                            child: Text(
-                              user?.displayName[0].toUpperCase() ?? 'ع',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'مرحباً، ${user?.displayName ?? ""}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'ما الخدمة التي تحتاجها اليوم؟',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Quick Actions
-                  const Text(
-                    'الإجراءات السريعة',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildQuickActionCard(
-                          icon: Icons.add_circle,
-                          title: 'طلب جديد',
-                          color: AppColors.primaryColor,
-                          onTap: () {
-                            // TODO: Navigate to new request screen
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('شاشة الطلب الجديد قريباً')),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildQuickActionCard(
-                          icon: Icons.history,
-                          title: 'طلباتي',
-                          color: AppColors.secondaryColor,
-                          onTap: () {
-                            // TODO: Navigate to my requests
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Popular Professions
-                  const Text(
-                    'المهن الأكثر طلباً',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPopularProfessions(context),
-                ],
-              ),
-            ),
-          ),
-
-          // Banner Ad
-          const BannerAdWidget(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to new request screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('شاشة الطلب الجديد قريباً')),
-          );
-        },
-        label: const Text(AppStrings.makeNewRequest),
-        icon: const Icon(Icons.add),
-        backgroundColor: AppColors.primaryColor,
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(icon, size: 40, color: color),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPopularProfessions(BuildContext context) {
-    final professions = [
-      {'name': 'بناء', 'icon': Icons.construction},
-      {'name': 'كهربائي', 'icon': Icons.electrical_services},
-      {'name': 'سباك', 'icon': Icons.plumbing},
-      {'name': 'نجار', 'icon': Icons.carpenter},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: professions.length,
-      itemBuilder: (context, index) {
-        final profession = professions[index];
-        return InkWell(
-          onTap: () {
-            // TODO: Navigate to profession details
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  profession['icon'] as IconData,
-                  size: 32,
-                  color: AppColors.primaryColor,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  profession['name'] as String,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _shareApp() {
-    Share.share(
-      'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
-    );
-  }
-}
-
-// CRAFTSMAN DASHBOARD
-class _CraftsmanDashboard extends StatefulWidget {
-  const _CraftsmanDashboard();
-
-  @override
-  State<_CraftsmanDashboard> createState() => _CraftsmanDashboardState();
-}
-
-class _CraftsmanDashboardState extends State<_CraftsmanDashboard> {
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
-    final isAvailable = user?.isAvailable ?? false;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.craftsmanDashboardTitle),
-        backgroundColor: AppColors.primaryColor,
-        actions: [
-          // Availability Toggle
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isAvailable ? AppColors.successColor : Colors.grey,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isAvailable ? Icons.check_circle : Icons.cancel,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isAvailable ? 'متاح' : 'مشغول',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () => _shareApp(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.surfaceColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن طلبات أو حرفيين...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.mic, color: Colors.white, size: 20),
-                    onPressed: () {
-                      // TODO: Implement voice search
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('البحث الصوتي قريباً')),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Main Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Availability Card
-                  Card(
-                    elevation: 2,
-                    color: isAvailable
-                        ? AppColors.successColor.withOpacity(0.1)
-                        : Colors.grey[200],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isAvailable ? Icons.work : Icons.work_off,
-                            size: 40,
-                            color: isAvailable ? AppColors.successColor : Colors.grey,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.workStatus,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isAvailable
-                                      ? AppStrings.willReceiveJobAlerts
-                                      : AppStrings.willNotReceiveJobAlerts,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: isAvailable,
-                            onChanged: (value) {
-                              authProvider.updateAvailability(value);
-                            },
-                            activeColor: AppColors.successColor,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Recent Requests
-                  const Text(
-                    AppStrings.recentJobRequests,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            AppStrings.noRequestsYet,
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Banner Ad
-          const BannerAdWidget(),
-        ],
-      ),
-    );
-  }
-
-  void _shareApp() {
-    Share.share(
-      'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
-    );
-  }
-}
-
-// SUPPLIER DASHBOARD
-class _SupplierDashboard extends StatelessWidget {
-  const _SupplierDashboard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('لوحة تحكم المورد'),
+        title: Text('مرحباً ${user.name}'),
         backgroundColor: AppColors.primaryColor,
         actions: [
           IconButton(
@@ -585,10 +41,7 @@ class _SupplierDashboard extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],
@@ -596,42 +49,314 @@ class _SupplierDashboard extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.store, size: 80, color: AppColors.primaryColor),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'مرحباً بك في لوحة تحكم الموردين',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'قم بإدارة متجرك ومنتجاتك',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to store management
-                      Navigator.pushNamed(context, '/store_management');
-                    },
-                    icon: const Icon(Icons.store),
-                    label: const Text('إدارة المتجر'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: _buildDashboard(context, user),
           ),
           const BannerAdWidget(),
         ],
       ),
     );
   }
+
+  Widget _buildDashboard(BuildContext context, UserModel user) {
+    // --- بداية التعديل ---
+    switch (user.userType) {
+      case AppStrings.client: // استخدام الثابت بدلاً من النص
+        return const _ClientDashboard();
+      case AppStrings.craftsman: // استخدام الثابت بدلاً من النص
+        return _CraftsmanDashboard(user: user);
+      case AppStrings.supplier: // استخدام الثابت بدلاً من النص
+        return _SupplierDashboard(user: user);
+      default:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 80, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'نوع المستخدم غير معروف: "${user.userType}"',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Provider.of<AuthProvider>(context, listen: false).signOut();
+                },
+                child: const Text('تسجيل الخروج'),
+              ),
+            ],
+          ),
+        );
+    }
+    // --- نهاية التعديل ---
+  }
 }
 
+// --- لوحة تحكم العميل ---
+class _ClientDashboard extends StatelessWidget {
+  const _ClientDashboard();
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.build_circle, size: 100, color: AppColors.primaryColor),
+            const SizedBox(height: 24),
+            const Text('لوحة تحكم العميل', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            const Text('ابحث عن الحرفيين المتاحين أو أنشئ طلب جديد', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Navigator.pushNamed(context, '/create_request');
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('إنشاء طلب جديد'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- لوحة تحكم الحرفي ---
+class _CraftsmanDashboard extends StatelessWidget {
+  final UserModel user;
+  const _CraftsmanDashboard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.handyman, size: 100, color: AppColors.primaryColor),
+            const SizedBox(height: 24),
+            const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Text('المهنة: ${user.professionName ?? 'غير محدد'}', style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('جاهز للعمل'),
+                const SizedBox(width: 16),
+                Switch(
+                  value: user.isAvailable ?? false,
+                  onChanged: (value) async {
+                    await Provider.of<AuthProvider>(context, listen: false).updateAvailability(value);
+                  },
+                  activeColor: AppColors.primaryColor,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- لوحة تحكم المورد ---
+class _SupplierDashboard extends StatefulWidget {
+  final UserModel user;
+  const _SupplierDashboard({required this.user});
+
+  @override
+  State<_SupplierDashboard> createState() => _SupplierDashboardState();
+}
+
+class _SupplierDashboardState extends State<_SupplierDashboard> {
+  final StoreService _storeService = StoreService();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. بطاقات الإحصائيات
+          _buildStatsCards(),
+          const SizedBox(height: 24),
+
+          // 2. أزرار الإجراءات السريعة
+          _buildQuickActions(),
+          const SizedBox(height: 24),
+
+          // 3. قسم أحدث المنتجات
+          const Text('أحدث المنتجات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildRecentProducts(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            title: 'المنتجات',
+            icon: Icons.inventory_2,
+            color: Colors.blue,
+            future: _storeService.getProductCount(widget.user.id),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            title: 'الطلبات',
+            icon: Icons.shopping_cart,
+            color: Colors.orange,
+            future: _storeService.getOrdersCount(widget.user.id),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _QuickActionButton(
+          icon: Icons.store,
+          label: 'إدارة المتجر',
+          onTap: () {
+            Navigator.pushNamed(context, '/store_management');
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.add_circle,
+          label: 'إضافة منتج',
+          onTap: () {
+            // TODO: Navigate to add product screen directly
+            Navigator.pushNamed(context, '/store_management'); // مؤقتًا
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.visibility,
+          label: 'عرض المتجر',
+          onTap: () {
+            // TODO: Navigate to public store view
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentProducts() {
+    return StreamBuilder<List<ProductModel>>(
+      stream: _storeService.getStoreProducts(widget.user.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('لم تقم بإضافة أي منتجات بعد.'));
+        }
+        final products = snapshot.data!;
+        // Limit to 3 recent products for the dashboard
+        final recentProducts = products.take(3).toList();
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: recentProducts.length,
+          separatorBuilder: (context, index) => const Divider(),
+          itemBuilder: (context, index) {
+            final product = recentProducts[index];
+            return ListTile(
+              leading: product.imageUrls.isNotEmpty
+                  ? Image.network(product.imageUrls.first, width: 50, height: 50, fit: BoxFit.cover)
+                  : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image)),
+              title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${product.price} درهم'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                // TODO: Navigate to product details
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// -- Widgets مساعدة للوحة تحكم المورد --
+class _StatCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final Future<int> future;
+
+  const _StatCard({required this.title, required this.icon, required this.color, required this.future});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 30, color: color),
+            const SizedBox(height: 8),
+            Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            const SizedBox(height: 4),
+            FutureBuilder<int>(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2));
+                }
+                return Text(
+                  snapshot.data?.toString() ?? '0',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 30, color: AppColors.primaryColor),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
