@@ -1,3 +1,5 @@
+// lib/models/chat_model.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChatModel {
@@ -14,7 +16,7 @@ class ChatModel {
     required this.id,
     required this.participants,
     required this.participantNames,
-    required this.participantPhones, // <-- الحقل الجديد
+    required this.participantPhones, // <-- مطلوب الآن في المُنشئ
     required this.lastMessageTime,
     required this.lastMessageContent,
     required this.lastMessageSenderId,
@@ -27,7 +29,7 @@ class ChatModel {
       id: doc.id,
       participants: List<String>.from(data['participants'] ?? []),
       participantNames: Map<String, dynamic>.from(data['participantNames'] ?? {}),
-      participantPhones: Map<String, dynamic>.from(data['participantPhones'] ?? {}), // <-- الحقل الجديد
+      participantPhones: Map<String, dynamic>.from(data['participantPhones'] ?? {}), // <-- قراءة الحقل الجديد
       lastMessageTime: (data['lastMessageTime'] as Timestamp).toDate(),
       lastMessageContent: data['lastMessageContent'] ?? '',
       lastMessageSenderId: data['lastMessageSenderId'] ?? '',
@@ -39,7 +41,7 @@ class ChatModel {
     return {
       'participants': participants,
       'participantNames': participantNames,
-      'participantPhones': participantPhones, // <-- الحقل الجديد
+      'participantPhones': participantPhones, // <-- إضافة الحقل الجديد عند الكتابة
       'lastMessageTime': Timestamp.fromDate(lastMessageTime),
       'lastMessageContent': lastMessageContent,
       'lastMessageSenderId': lastMessageSenderId,
