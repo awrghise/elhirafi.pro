@@ -1,12 +1,13 @@
 // lib/providers/request_provider.dart
 
-import 'dart.async';
+import 'dart:async'; // <-- تصحيح الخطأ الإملائي هنا
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/request_model.dart';
 import '../models/user_model.dart' as user_model;
 import '../services/request_service.dart';
 
+// ... باقي الكود يبقى كما هو بدون أي تغيير ...
 class RequestProvider with ChangeNotifier {
   final RequestService _requestService = RequestService();
   
@@ -45,9 +46,6 @@ class RequestProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية التعديلات ---
-
-  // دالة لجلب الدفعة الأولى من الطلبات
   Future<void> fetchInitialRequests({
     required String userType,
     required String userId,
@@ -83,7 +81,6 @@ class RequestProvider with ChangeNotifier {
     }
   }
 
-  // دالة لجلب المزيد من الطلبات عند التمرير
   Future<void> fetchMoreRequests({
     required String userType,
     required String userId,
@@ -117,8 +114,6 @@ class RequestProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // --- نهاية التعديلات ---
 
   @override
   void dispose() {
