@@ -1,3 +1,5 @@
+// lib/services/chat_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -10,7 +12,10 @@ class ChatService {
     return _firestore
         .collection('chats')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
+        // --- بداية التعديل الوحيد ---
+        // تم تغيير الفرز ليطابق الفهرس الذي تم إنشاؤه
+        .orderBy('lastMessageTime', descending: false) 
+        // --- نهاية التعديل الوحيد ---
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => ChatModel.fromFirestore(doc))
@@ -99,5 +104,3 @@ class ChatService {
     return chatId;
   }
 }
-
-
