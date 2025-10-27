@@ -1,6 +1,6 @@
 // lib/screens/auth/register_screen.dart
 
-import 'dart:async'; // <-- تصحيح الخطأ الإملائي هنا
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,7 +14,6 @@ import '../../data/cities_data.dart';
 import '../../data/professions_data.dart';
 import '../../models/user_model.dart';
 
-// ... باقي الكود يبقى كما هو بدون أي تغيير ...
 class RegisterScreen extends StatefulWidget {
   final bool isEditing;
   final UserModel? userToEdit;
@@ -57,7 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _userType = user.userType;
       _selectedProfession = user.professionName;
       _selectedCountry = user.country;
-      _selectedPrimaryCity = user.primaryCity;
+      // --- بداية التعديل ---
+      _selectedPrimaryCity = user.primaryWorkCity; // <-- استخدام الحقل الصحيح
+      // --- نهاية التعديل ---
       _networkImageUrl = user.profileImageUrl;
     } else {
       _userType = AppStrings.client;
@@ -104,7 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'name': _nameController.text.trim(),
           'phoneNumber': _phoneController.text.trim(),
           'professionName': _selectedProfession,
-          'primaryCity': _selectedPrimaryCity,
+          'primaryWorkCity': _selectedPrimaryCity, // <-- استخدام الحقل الصحيح
           'country': _selectedCountry,
         };
         await authProvider.updateUserProfileWithImage(
@@ -125,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           phoneNumber: _phoneController.text.trim(),
           userType: _userType!,
           professionName: _selectedProfession,
-          primaryCity: _selectedPrimaryCity,
+          primaryCity: _selectedPrimaryCity, // authProvider.register يتوقع 'primaryCity'
           country: _selectedCountry,
           profileImage: _image,
         );
