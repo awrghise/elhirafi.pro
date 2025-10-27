@@ -69,11 +69,9 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         query = query.where('professionName', isEqualTo: _selectedProfession);
       }
 
-      // --- تم تعديل هذا الشرط ليعمل مع الحقل الجديد ---
       if (_selectedCity != null) {
         query = query.where('alertCities', arrayContains: _selectedCity);
       }
-      // --- نهاية التعديل ---
 
       query = query.orderBy('createdAt', descending: true).limit(_pageSize);
 
@@ -84,32 +82,21 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       final snapshot = await query.get();
 
       if (snapshot.docs.isEmpty) {
-        if(mounted){
+        if(mounted) setState(() => _hasMore = false);
+      } else {
+        final newCraftsmen = snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+        if(mounted) {
           setState(() {
-            _hasMore = false;
-            _isLoading = false;
+            _craftsmen.addAll(newCraftsmen);
+            _lastDocument = snapshot.docs.last;
+            _hasMore = newCraftsmen.length == _pageSize;
           });
         }
-        return;
-      }
-
-      final newCraftsmen = snapshot.docs
-          .map((doc) => UserModel.fromFirestore(doc))
-          .toList();
-
-      if(mounted){
-        setState(() {
-          _craftsmen.addAll(newCraftsmen);
-          _lastDocument = snapshot.docs.last;
-          _hasMore = snapshot.docs.length == _pageSize;
-          _isLoading = false;
-        });
       }
     } catch (e) {
       print('Error loading craftsmen: $e');
-      if(mounted){
-        setState(() => _isLoading = false);
-      }
+    } finally {
+      if(mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -148,10 +135,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     prefixIcon: const Icon(Icons.work_outline, size: 20),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   items: [
@@ -159,18 +143,12 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     ...ProfessionsData().getAllProfessions().map((profession) {
                       return DropdownMenuItem(
                         value: profession.getNameByDialect('AR'),
-                        child: Text(
-                          profession.getNameByDialect('AR'),
-                          style: const TextStyle(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(profession.getNameByDialect('AR'), style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
                       );
                     }),
                   ],
                   onChanged: (value) {
-                    setState(() {
-                      _selectedProfession = value;
-                    });
+                    setState(() => _selectedProfession = value);
                     _resetAndReload();
                   },
                 ),
@@ -183,10 +161,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   items: [
@@ -194,18 +169,12 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     ...availableCities.map((city) {
                       return DropdownMenuItem(
                         value: city,
-                        child: Text(
-                          city,
-                          style: const TextStyle(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(city, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
                       );
                     }),
                   ],
                   onChanged: (value) {
-                    setState(() {
-                      _selectedCity = value;
-                    });
+                    setState(() => _selectedCity = value);
                     _resetAndReload();
                   },
                 ),
@@ -220,10 +189,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                       children: [
                         Icon(Icons.person_search, size: 64, color: Colors.grey),
                         SizedBox(height: 16),
-                        Text(
-                          'لا يوجد حرفيون متاحون بالفلتر الحالي',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
+                        Text('لا يوجد حرفيون متاحون بالفلتر الحالي', style: TextStyle(fontSize: 16, color: Colors.grey)),
                       ],
                     ),
                   )
@@ -233,14 +199,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     itemCount: _craftsmen.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == _craftsmen.length) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
+                        return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
                       }
-
                       final craftsman = _craftsmen[index];
                       return _buildCraftsmanCard(craftsman, currentUser?.userType == AppStrings.client);
                     },
@@ -264,18 +224,9 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: AppColors.primaryColor.withOpacity(0.1),
-                  backgroundImage: craftsman.profileImageUrl.isNotEmpty
-                      ? NetworkImage(craftsman.profileImageUrl)
-                      : null,
+                  backgroundImage: craftsman.profileImageUrl.isNotEmpty ? NetworkImage(craftsman.profileImageUrl) : null,
                   child: craftsman.profileImageUrl.isEmpty
-                      ? Text(
-                          craftsman.name.isNotEmpty ? craftsman.name[0].toUpperCase() : 'U',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryColor,
-                          ),
-                        )
+                      ? Text(craftsman.name.isNotEmpty ? craftsman.name[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryColor))
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -283,38 +234,21 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        craftsman.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(craftsman.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text(
-                        craftsman.professionName ?? 'حرفي',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                      Text(craftsman.professionName ?? 'حرفي', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
                           const SizedBox(width: 4),
-                          // --- بداية الإصلاح النهائي ---
                           Expanded(
                             child: Text(
-                              craftsman.primaryWorkCity ?? 'غير محدد', // استخدام الحقل الصحيح
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                              craftsman.primaryWorkCity ?? 'غير محدد',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // --- نهاية الإصلاح النهائي ---
                         ],
                       ),
                     ],
@@ -330,10 +264,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     onPressed: isClient ? () => _contactCraftsman(craftsman) : null,
                     icon: const Icon(Icons.chat_outlined, size: 18),
                     label: const Text('محادثة'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryColor,
-                      side: const BorderSide(color: AppColors.primaryColor),
-                    ),
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.primaryColor, side: const BorderSide(color: AppColors.primaryColor)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -342,10 +273,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                     onPressed: isClient ? () => _callCraftsman(craftsman) : null,
                     icon: const Icon(Icons.phone_outlined, size: 18),
                     label: const Text('اتصال'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor, foregroundColor: Colors.white),
                   ),
                 ),
               ],
@@ -363,11 +291,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
 
     if (currentUser == null) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
       final chatId = await chatProvider.getOrCreateChat(
@@ -380,6 +304,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       if(mounted) Navigator.pop(context);
 
       if(mounted){
+        // --- بداية التعديل: تمرير رقم الهاتف ---
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -387,18 +312,15 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               chatId: chatId,
               otherUserId: craftsman.id,
               otherUserName: craftsman.name,
+              otherUserPhone: craftsman.phoneNumber, // <-- هنا التعديل
             ),
           ),
         );
+        // --- نهاية التعديل ---
       }
     } catch (e) {
       if(mounted) Navigator.pop(context);
-      
-      if(mounted){
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل بدء المحادثة: $e')),
-        );
-      }
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل بدء المحادثة: $e')));
     }
   }
 
@@ -407,11 +329,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('لا يمكن إجراء الاتصال بالرقم ${craftsman.phoneNumber}')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لا يمكن إجراء الاتصال بالرقم ${craftsman.phoneNumber}')));
     }
   }
 }
