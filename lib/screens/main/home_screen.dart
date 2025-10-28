@@ -1,11 +1,9 @@
-// lib/screens/main/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:alsana_alharfiyin/models/user_model.dart';
 import 'package:alsana_alharfiyin/providers/auth_provider.dart';
 import 'package:alsana_alharfiyin/constants/app_colors.dart';
-import 'package:alsana_alharfiyin/constants/app_strings.dart'; // <-- استيراد مهم
+import 'package:alsana_alharfiyin/constants/app_strings.dart';
 import 'package:alsana_alharfiyin/widgets/banner_ad_widget.dart';
 import 'package:alsana_alharfiyin/services/store_service.dart';
 import 'package:alsana_alharfiyin/models/product_model.dart';
@@ -38,14 +36,13 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          // --- بداية الإصلاح: إعادة أيقونة الإعدادات ---
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              Navigator.pushNamed(context, '/settings');
+              // Assuming you have a route setup for settings
+              // Navigator.pushNamed(context, '/settings');
             },
           ),
-          // --- نهاية الإصلاح ---
         ],
       ),
       body: Column(
@@ -60,7 +57,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildDashboard(BuildContext context, UserModel user) {
-    // --- بداية الإصلاح: استخدام القيم الجديدة من AppStrings ---
     switch (user.userType) {
       case AppStrings.client:
         return const _ClientDashboard();
@@ -68,7 +64,6 @@ class HomeScreen extends StatelessWidget {
         return _CraftsmanDashboard(user: user);
       case AppStrings.supplier:
         return _SupplierDashboard(user: user);
-      // --- نهاية الإصلاح ---
       default:
         return Center(
           child: Column(
@@ -94,9 +89,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ... باقي الكود للـ Dashboards يبقى كما هو بدون تغيير ...
-
-// --- لوحة تحكم العميل ---
 class _ClientDashboard extends StatelessWidget {
   const _ClientDashboard();
   @override
@@ -131,7 +123,6 @@ class _ClientDashboard extends StatelessWidget {
   }
 }
 
-// --- لوحة تحكم الحرفي ---
 class _CraftsmanDashboard extends StatelessWidget {
   final UserModel user;
   const _CraftsmanDashboard({required this.user});
@@ -148,7 +139,9 @@ class _CraftsmanDashboard extends StatelessWidget {
             const SizedBox(height: 24),
             const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            Text('المهنة: ${user.professionName ?? 'غير محدد'}', style: const TextStyle(fontSize: 16)),
+            // --- بداية التعديل: استخدام الحقل الصحيح ---
+            Text('المهنة: ${user.profession}', style: const TextStyle(fontSize: 16)),
+            // --- نهاية التعديل ---
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -156,7 +149,7 @@ class _CraftsmanDashboard extends StatelessWidget {
                 const Text('جاهز للعمل'),
                 const SizedBox(width: 16),
                 Switch(
-                  value: user.isAvailable ?? false,
+                  value: user.isAvailable,
                   onChanged: (value) async {
                     await Provider.of<AuthProvider>(context, listen: false).updateAvailability(value);
                   },
@@ -171,7 +164,6 @@ class _CraftsmanDashboard extends StatelessWidget {
   }
 }
 
-// --- لوحة تحكم المورد ---
 class _SupplierDashboard extends StatefulWidget {
   final UserModel user;
   const _SupplierDashboard({required this.user});
@@ -234,14 +226,14 @@ class _SupplierDashboardState extends State<_SupplierDashboard> {
           icon: Icons.store,
           label: 'إدارة المتجر',
           onTap: () {
-            Navigator.pushNamed(context, '/store_management');
+            // Navigator.pushNamed(context, '/store_management');
           },
         ),
         _QuickActionButton(
           icon: Icons.add_circle,
           label: 'إضافة منتج',
           onTap: () {
-            Navigator.pushNamed(context, '/store_management');
+            // Navigator.pushNamed(context, '/store_management');
           },
         ),
         _QuickActionButton(
