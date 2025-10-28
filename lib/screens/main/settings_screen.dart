@@ -9,8 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
 
-// --- بداية التعديل 1: استيراد ملف بيانات المدن ---
-import '../../data/data_cities.dart'; // تأكد من أن هذا المسار صحيح
+// --- بداية التعديل: استخدام اسم الملف الصحيح ---
+import '../../data/cities_data.dart'; // <-- تم تصحيح اسم الملف هنا
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,19 +26,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final user = userProvider.user;
 
-    // --- بداية التعديل 2: جعل قائمة المدن ديناميكية ---
-    // إذا لم نجد المستخدم أو دولته، نعرض قائمة فارغة كإجراء احترازي
     if (user == null || user.country.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('لا يمكن تحديد دولة المستخدم لعرض المدن.'))
       );
       return;
     }
-    // جلب المدن الخاصة بدولة المستخدم فقط من الخريطة
+    
     final List<String> citiesForUserCountry = citiesByCountry[user.country] ?? [];
-    // --- نهاية التعديل 2 ---
-
-    List<String> tempSelectedCities = List<String>.from(user.subscribedCities ?? []);
+    
+    List<String> tempSelectedCities = List<String>.from(user.subscribedCities);
     String searchQuery = '';
 
     showDialog(
@@ -46,12 +43,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final filteredCities = citiesForUserCountry // <-- استخدام القائمة المفلترة هنا
+            final filteredCities = citiesForUserCountry
                 .where((city) => city.toLowerCase().contains(searchQuery.toLowerCase()))
                 .toList();
 
             return AlertDialog(
-              title: Text('اختر مدن التنبيهات في ${user.country}'), // <-- عنوان ديناميكي
+              title: Text('اختر مدن التنبيهات في ${user.country}'),
               contentPadding: const EdgeInsets.symmetric(vertical: 8.0),
               content: SizedBox(
                 width: double.maxFinite,
@@ -142,7 +139,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ... بقية الكود لم يتغير ...
     final themeProvider = Provider.of<ThemeProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = Provider.of<UserProvider>(context).user;
@@ -159,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('الحساب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                  Text('الحساب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.person),
@@ -176,14 +172,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 24),
 
                   if (user?.userType == AppStrings.craftsman) ...[
-                    const Text('تنبيهات الطلبات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                    Text('تنبيهات الطلبات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.location_city),
                       title: const Text('مدن التنبيهات'),
                       subtitle: Text(
-                        (user?.subscribedCities != null && user.subscribedCities!.isNotEmpty)
-                            ? user.subscribedCities!.join(', ')
+                        (user.subscribedCities.isNotEmpty)
+                            ? user.subscribedCities.join(', ')
                             : 'لم تختر أي مدن بعد',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -194,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  const Text('المظهر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppStrings.primaryColor)),
+                  Text('المظهر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
                   const Divider(),
                   SwitchListTile(
                     title: const Text(AppStrings.darkMode),
@@ -206,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  const Text('حول التطبيق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppStrings.primaryColor)),
+                  Text('حول التطبيق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.policy_outlined),
