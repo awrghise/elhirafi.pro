@@ -4,33 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:upgrader/upgrader.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'firebase_options.dart';
-import 'constants/app_colors.dart';
-import 'constants/app_strings.dart';
+import 'services/ads_service.dart';
+import 'services/notification_service.dart';
 
+// Providers
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
-import 'providers/request_provider.dart';
+import 'providers/user_provider.dart';
+import 'providers/craftsmen_provider.dart';
 import 'providers/store_provider.dart';
 import 'providers/theme_provider.dart';
 
+// Screens
 import 'screens/auth/login_screen.dart';
 import 'screens/main/main_screen_holder.dart';
 
-// Unused import, as pointed out by the analyzer
-// import 'services/ads_service.dart';
-
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await MobileAds.instance.initialize();
-  await FirebaseMessaging.instance.requestPermission();
-
+  await NotificationService().init();
+  await AdsService.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -41,37 +38,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => RequestProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => CraftsmenProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => StoreProvider()),
-        // ChatProvider depends on AuthProvider
-        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
-          create: (_) => ChatProvider(),
-          update: (_, auth, chat) {
-            if (chat == null) return ChatProvider();
-            if (auth.user != null) {
-              chat.setCurrentUserId(auth.user!.id);
-            }
-            return chat;
-          },
-        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            title: AppStrings.appName,
+            title: 'الصانع الحرفي',
             theme: themeProvider.getTheme(),
+            home: AuthWrapper(),
             debugShowCheckedModeBanner: false,
-            home: UpgradeAlert(
-              upgrader: Upgrader(
-                dialogStyle: UpgradeDialogStyle.material,
-                canDismissDialog: false,
-                showLater: false,
-                showIgnore: false,
-              ),
-              child: const AuthWrapper(),
-            ),
           );
         },
       ),
@@ -84,27 +64,42 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- بداية التعديل ---
-    // We use the user object from the provider to determine auth state.
-    // The provider listens to authStateChanges internally.
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // Show a loading indicator while the auth state is being determined.
-    if (authProvider.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    // If the user object is not null, the user is authenticated.
-    if (authProvider.user != null) {
-      return const MainScreenHolder();
-    } else {
-      // Otherwise, show the login screen.
-      return const LoginScreen();
-    }
+    // --- بداية التعديل: تحديث Upgrader ---
+    // الإصدار الجديد من Upgrader يستخدم تهيئة مباشرة.
+    // الخصائص القديمة مثل dialogStyle و showLater تم تغييرها أو إزالتها.
+    // هذا هو الإعداد الأساسي الذي يعمل.
+    final upgrader = Upgrader(
+      dialogStyle: UpgradeDialogStyle.material, // أو .cupertino
+      canDismissDialog: true,
+      showLater: true,
+      showIgnore: false,
+    );
     // --- نهاية التعديل ---
+
+    return UpgradeAlert(
+      upgrader: upgrader,
+      child: StreamBuilder<UserModel?>(
+        stream: authProvider.userStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            final UserModel? user = snapshot.data;
+            if (user == null) {
+              return const LoginScreen();
+            }
+            // تحديث بيانات المستخدم في UserProvider عند تسجيل الدخول
+            Provider.of<UserProvider>(context, listen: false).setUser(user);
+            return const MainScreenHolder();
+          }
+          // أثناء انتظار بيانات المصادقة، أظهر شاشة تحميل
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
