@@ -1,4 +1,4 @@
-import '../models/profession_model.dart';
+import '../models/profession_model.dart'; // <-- هذا هو السطر الذي تم إضافته لحل المشكلة
 
 // قائمة المهن المحددة مسبقاً
 class ProfessionsData {
