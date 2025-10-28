@@ -1,17 +1,62 @@
-// lib/services/store_service.dart
-
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import '../models/product_model.dart';
-import '../models/store_model.dart'; // <-- تم تصحيح مسار الاستيراد هنا
+import '../models/store_model.dart';
 
 class StoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  // ... (باقي الدوال تبقى كما هي) ...
+  
+  Future<String?> uploadProductImage(File imageFile, String supplierId) async {
+    try {
+      // 1. قراءة الصورة
+      final bytes = await imageFile.readAsBytes();
+      img.Image? image = img.decodeImage(bytes);
+
+      if (image == null) {
+        print('Failed to decode image.');
+        return null;
+      }
+
+      // 2. تغيير الحجم إذا كانت الصورة كبيرة (منطق سليم)
+      if (image.width > 1024 || image.height > 1024) {
+        image = img.copyResize(
+          image,
+          width: image.width > image.height ? 1024 : null,
+          height: image.height > image.width ? 1024 : null,
+        );
+      }
+
+      // 3. ضغط الجودة (منطق سليم)
+      final compressedBytes = img.encodeJpg(image, quality: 85);
+
+      // 4. استخدام ملف مؤقت للرفع
+      final tempDir = await getTemporaryDirectory();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsBytes(compressedBytes);
+
+      // 5. رفع الملف المضغوط
+      final ref = _storage.ref().child('products/$supplierId/$fileName');
+      await ref.putFile(tempFile);
+      final downloadUrl = await ref.getDownloadURL();
+
+      // 6. حذف الملف المؤقت
+      await tempFile.delete();
+
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading and compressing product image: $e');
+      return null;
+    }
+  }
+
+  // ... (باقي الدوال تبقى كما هي) ...
   Future<StoreModel?> getStoreBySupplier(String supplierId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -132,43 +177,6 @@ class StoreService {
     } catch (e) {
       print('Error deleting product: $e');
       return false;
-    }
-  }
-
-  Future<String?> uploadProductImage(File imageFile, String supplierId) async {
-    try {
-      final bytes = await imageFile.readAsBytes();
-      img.Image? image = img.decodeImage(bytes);
-
-      if (image == null) return null;
-
-      if (image.width > 1024 || image.height > 1024) {
-        image = img.copyResize(
-          image,
-          width: image.width > image.height ? 1024 : null,
-          height: image.height > image.width ? 1024 : null,
-        );
-      }
-
-      final compressedBytes = img.encodeJpg(image, quality: 85);
-
-      final tempDir = await getTemporaryDirectory();
-      final tempFile =
-          File('${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await tempFile.writeAsBytes(compressedBytes);
-
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = _storage.ref().child('products/$supplierId/$fileName');
-
-      await ref.putFile(tempFile);
-      final downloadUrl = await ref.getDownloadURL();
-
-      await tempFile.delete();
-
-      return downloadUrl;
-    } catch (e) {
-      print('Error uploading image: $e');
-      return null;
     }
   }
 
