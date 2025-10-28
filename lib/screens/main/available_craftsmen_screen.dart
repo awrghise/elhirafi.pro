@@ -10,7 +10,7 @@ import '../../providers/chat_provider.dart';
 import '../../data/professions_data.dart';
 import '../../data/cities_data.dart';
 import '../chat/chat_detail_screen.dart';
-import '../../models/profession_model.dart';
+import '../../models/profession_model.dart'; // <-- هذا هو السطر الذي تم إضافته
 
 class AvailableCraftsmenScreen extends StatefulWidget {
   const AvailableCraftsmenScreen({super.key});
@@ -30,7 +30,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   bool _hasMore = true;
   final int _pageSize = 15;
 
-  String? _selectedProfessionKey; // --- تعديل: استخدام مفتاح المهنة للفلترة
+  String? _selectedProfessionKey;
   String? _selectedCity;
 
   final ProfessionsData _professionsData = ProfessionsData();
@@ -78,16 +78,13 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
           .orderBy('createdAt', descending: true)
           .limit(_pageSize);
 
-      // --- بداية التعديل: تحديث منطق الفلترة ---
       if (_selectedProfessionKey != null) {
         query = query.where('profession', isEqualTo: _selectedProfessionKey);
       }
 
       if (_selectedCity != null) {
-        // البحث في المدن التي يشترك فيها الحرفي
         query = query.where('subscribedCities', arrayContains: _selectedCity);
       }
-      // --- نهاية التعديل ---
 
       if (_lastDocument != null && !isInitial) {
         query = query.startAfterDocument(_lastDocument!);
@@ -129,14 +126,13 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
-    final userCountry = currentUser?.country ?? 'المغرب'; // افتراضي إلى المغرب إذا لم يتم تحديده
+    final userCountry = currentUser?.country ?? 'المغرب';
     
-    // الحصول على كل المدن من كل الجهات للدولة المحددة
     final allCitiesForCountry = CitiesData.getRegions(userCountry)
         .expand((region) => CitiesData.getCities(userCountry, region))
-        .toSet() // لإزالة التكرارات
+        .toSet()
         .toList()
-      ..sort(); // ترتيب أبجدي
+      ..sort();
 
     return Scaffold(
       appBar: AppBar(
@@ -178,7 +174,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                 const DropdownMenuItem(value: null, child: Text('جميع المهن')),
                 ..._professionsData.getAllProfessions().map((Profession profession) {
                   return DropdownMenuItem(
-                    value: profession.conceptKey, // استخدام المفتاح كقيمة
+                    value: profession.conceptKey,
                     child: Text(profession.getNameByDialect('AR')),
                   );
                 }),
@@ -264,7 +260,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
             return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
           }
           final craftsman = _craftsmen[index];
-          // لا تعرض الحرفي إذا كان هو المستخدم الحالي
           if (craftsman.id == currentUser?.id) {
             return const SizedBox.shrink();
           }
@@ -275,7 +270,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   }
 
   Widget _buildCraftsmanCard(UserModel craftsman, UserModel? currentUser) {
-    // الحصول على الاسم المحلي للمهنة
     final professionName = _professionsData.getLocalizedProfessionName(craftsman.profession, 'AR');
 
     return Card(
@@ -312,9 +306,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        // --- بداية التعديل: استخدام الاسم المحلي للمهنة ---
                         professionName,
-                        // --- نهاية التعديل ---
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 4),
@@ -379,7 +371,6 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 
     try {
-      // --- بداية التعديل: تمرير أرقام الهواتف المطلوبة ---
       final chatId = await chatProvider.getOrCreateChat(
         user1Id: currentUser.id,
         user1Name: currentUser.name,
@@ -388,9 +379,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         user2Name: craftsman.name,
         user2Phone: craftsman.phoneNumber,
       );
-      // --- نهاية التعديل ---
 
-      if(mounted) Navigator.pop(context); // إغلاق مؤشر التحميل
+      if(mounted) Navigator.pop(context);
 
       if(mounted){
         Navigator.push(
@@ -406,7 +396,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
         );
       }
     } catch (e) {
-      if(mounted) Navigator.pop(context); // إغلاق مؤشر التحميل في حالة الخطأ
+      if(mounted) Navigator.pop(context);
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل بدء المحادثة: $e')));
     }
   }
