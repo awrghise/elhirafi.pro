@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image/image.dart' as img; // <-- إضافة المكتبة
+import 'package:path_provider/path_provider.dart'; // <-- لإدارة الملفات المؤقتة
 import '../models/user_model.dart';
 import '../constants/app_strings.dart';
 
@@ -18,10 +20,8 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // --- بداية التعديل 1: إضافة getter للتحقق من المصادقة ---
   bool get isAuthenticated => _user != null;
 
-  // --- بداية التعديل 2: إضافة Stream لمراقبة حالة المستخدم ---
   Stream<UserModel?> get userStream {
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
@@ -33,7 +33,6 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  // الدالة القديمة للاستماع داخلياً فقط
   AuthProvider() {
     _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
   }
@@ -65,8 +64,8 @@ class AuthProvider with ChangeNotifier {
     required String name,
     required String phoneNumber,
     required String userType,
-    String? profession, // --- تعديل 3: تغيير اسم المعلمة
-    String? primaryWorkCity, // --- تعديل 3: تغيير اسم المعلمة
+    String? profession,
+    String? primaryWorkCity,
     String? country,
     File? profileImage,
   }) async {
@@ -82,7 +81,6 @@ class AuthProvider with ChangeNotifier {
         profileImageUrl = await _uploadProfileImage(userCredential.user!.uid, profileImage);
       }
 
-      // --- بداية التعديل 4: تصحيح مُنشئ UserModel ---
       UserModel newUser = UserModel(
         id: userCredential.user!.uid,
         name: name,
@@ -90,17 +88,16 @@ class AuthProvider with ChangeNotifier {
         phoneNumber: phoneNumber,
         userType: userType,
         profileImageUrl: profileImageUrl,
-        profession: profession ?? '', // استخدام الاسم الصحيح وتوفير قيمة افتراضية
-        primaryWorkCity: primaryWorkCity ?? '', // استخدام الاسم الصحيح وتوفير قيمة افتراضية
-        country: country ?? '', // توفير قيمة افتراضية
-        subscribedCities: primaryWorkCity != null ? [primaryWorkCity] : [], // استخدام الاسم الصحيح
-        isAvailable: userType == AppStrings.craftsman, // توفير قيمة bool مباشرة
-        createdAt: DateTime.now(), // استخدام DateTime.now()
+        profession: profession ?? '',
+        primaryWorkCity: primaryWorkCity ?? '',
+        country: country ?? '',
+        subscribedCities: primaryWorkCity != null ? [primaryWorkCity] : [],
+        isAvailable: userType == AppStrings.craftsman,
+        createdAt: DateTime.now(),
         experience: 0,
         rating: 0.0,
         reviewCount: 0,
       );
-      // --- نهاية التعديل 4 ---
 
       await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
       _user = newUser;
@@ -129,7 +126,6 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // --- بداية التعديل 5: إضافة دالة إعادة تعيين كلمة المرور ---
   Future<void> sendPasswordResetEmail(String email) async {
     _setLoading(true);
     try {
@@ -140,18 +136,45 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-  // --- نهاية التعديل 5 ---
 
-  Future<String> _uploadProfileImage(String userId, File image) async {
+  // --- بداية تعديل دالة رفع الصورة ---
+  Future<String> _uploadProfileImage(String userId, File imageFile) async {
     try {
+      // 1. قراءة وضغط الصورة
+      final bytes = await imageFile.readAsBytes();
+      img.Image? image = img.decodeImage(bytes);
+
+      if (image == null) return '';
+
+      // 2. تغيير حجم الصورة إذا كانت كبيرة
+      if (image.width > 1024 || image.height > 1024) {
+        image = img.copyResize(
+          image,
+          width: image.width > image.height ? 1024 : null,
+          height: image.height > image.width ? 1024 : null,
+        );
+      }
+
+      // 3. ضغط الجودة وحفظها كملف مؤقت
+      final compressedBytes = img.encodeJpg(image, quality: 85);
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$userId.jpg');
+      await tempFile.writeAsBytes(compressedBytes);
+
+      // 4. رفع الملف المضغوط إلى Firebase Storage
       final ref = _storage.ref().child('profile_images').child('$userId.jpg');
-      await ref.putFile(image);
+      await ref.putFile(tempFile);
+
+      // 5. حذف الملف المؤقت
+      await tempFile.delete();
+
       return await ref.getDownloadURL();
     } catch (e) {
-      print("Error uploading profile image: $e");
+      print("Error uploading and compressing profile image: $e");
       return '';
     }
   }
+  // --- نهاية تعديل دالة رفع الصورة ---
   
   Future<void> updateUserProfileWithImage({
     required String userId,
@@ -164,7 +187,7 @@ class AuthProvider with ChangeNotifier {
         data['profileImageUrl'] = await _uploadProfileImage(userId, newImage);
       }
       await _firestore.collection('users').doc(userId).update(data);
-      await _fetchUser(userId); // إعادة تحميل بيانات المستخدم بعد التحديث
+      await _fetchUser(userId);
     } catch (e) {
       rethrow;
     } finally {
@@ -172,7 +195,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية التعديل 6: إضافة دالة تحديث نوع المستخدم ---
   Future<void> updateUserType(String newUserType) async {
     if (_user == null) return;
     _setLoading(true);
@@ -185,7 +207,6 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-  // --- نهاية التعديل 6 ---
 
   Future<void> updateAvailability(bool isAvailable) async {
     if (_user == null) return;
