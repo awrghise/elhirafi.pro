@@ -25,7 +25,7 @@ class AppStrings {
   static const String password = 'كلمة المرور';
   static const String confirmPassword = 'تأكيد كلمة المرور';
   static const String theme = 'السمة';
-  static const String changeLanguage = 'تغيير اللغة';
+  // static const String changeLanguage = 'تغيير اللغة'; // <-- تم حذف هذا السطر
   static const String darkMode = 'الوضع الليلي';
   static const String lightMode = 'الوضع النهاري';
   static const String privacyPolicy = 'سياسة الخصوصية';
