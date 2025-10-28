@@ -5,45 +5,50 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
 class UserProvider with ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   UserModel? _user;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserModel? get user => _user;
 
-  void setUser(UserModel? user) {
-    if (_user != user) {
-      _user = user;
-      notifyListeners();
-    }
+  void setUser(UserModel user) {
+    _user = user;
+    notifyListeners();
   }
 
-  /// **الوظيفة الأساسية لتحقيق هدفك**
-  /// تقوم هذه الدالة بتحديث قائمة المدن التي يتابعها المستخدم في قاعدة البيانات.
+  void clearUser() {
+    _user = null;
+    notifyListeners();
+  }
+
+  // دالة لتحديث المدن التي يتابعها المستخدم في Firestore
   Future<void> updateUserSubscribedCities(List<String> cities) async {
     if (_user == null) return;
 
     try {
+      // --- بداية التعديل: استخدام الاسم الصحيح للحقل ---
       await _firestore.collection('users').doc(_user!.id).update({
         'subscribedCities': cities,
       });
-      // تحديث بيانات المستخدم محليًا بعد النجاح
+      // --- نهاية التعديل ---
+
+      // تحديث الحالة المحلية للمستخدم لتعكس التغيير فوراً في الواجهة
       _user = _user!.copyWith(subscribedCities: cities);
       notifyListeners();
-      print("User subscribed cities updated successfully.");
     } catch (e) {
       print("Error updating subscribed cities: $e");
-      // يمكنك هنا إظهار رسالة خطأ للمستخدم إذا أردت
+      // يمكنك رمي الخطأ مرة أخرى إذا أردت معالجته في الواجهة
       rethrow;
     }
   }
 
-  // دالة لتحديث بيانات المستخدم بشكل عام إذا احتجنا إليها لاحقًا
+  // دالة لتحديث بيانات المستخدم بشكل عام (يمكن استخدامها لاحقًا)
   Future<void> refreshUserData() async {
     if (_user == null) return;
     try {
       final doc = await _firestore.collection('users').doc(_user!.id).get();
       if (doc.exists) {
-        setUser(UserModel.fromFirestore(doc));
+        _user = UserModel.fromFirestore(doc);
+        notifyListeners();
       }
     } catch (e) {
       print("Error refreshing user data: $e");
