@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../constants/app_colors.dart';
-import '../../models/store_item_model.dart';
+
 import '../../providers/auth_provider.dart';
-import '../../providers/store_provider.dart';
 import '../../models/user_model.dart';
+import '../../constants/app_colors.dart';
+
+// Corrected import paths
+import '../../models/store_item_model.dart';
+import '../../providers/store_provider.dart';
+
 
 class StoreManagementScreen extends StatefulWidget {
   const StoreManagementScreen({super.key});
@@ -25,9 +29,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
       if (user != null) {
-        // --- بداية التعديل 1 ---
         Provider.of<StoreProvider>(context, listen: false).fetchStoreItems(user.id);
-        // --- نهاية التعديل 1 ---
       }
     });
   }
@@ -123,9 +125,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                           description: descriptionController.text,
                           price: price,
                           imageUrl: '', // Will be set after upload
-                          // --- بداية التعديل 2 ---
                           supplierId: user.id,
-                          // --- نهاية التعديل 2 ---
                           createdAt: Timestamp.now(),
                         );
                         await storeProvider.addStoreItem(newItem, image!);
@@ -135,9 +135,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                           name: nameController.text,
                           description: descriptionController.text,
                           price: price,
-                          // --- بداية التعديل 3 ---
                           supplierId: user.id,
-                          // --- نهاية التعديل 3 ---
                         );
                         await storeProvider.updateStoreItem(updatedItem, newImage: image);
                       }
@@ -217,9 +215,7 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
                                   ),
                                 );
                                 if (confirm == true) {
-                                  // --- بداية التعديل 4 ---
                                   Provider.of<StoreProvider>(context, listen: false).deleteStoreItem(item.id, user.id);
-                                  // --- نهاية التعديل 4 ---
                                 }
                               },
                             ),
