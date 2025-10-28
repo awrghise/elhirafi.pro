@@ -1,5 +1,3 @@
-// lib/screens/main/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
@@ -8,9 +6,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
-
-// --- بداية التعديل: استخدام اسم الملف الصحيح ---
-import '../../data/cities_data.dart'; // <-- تم تصحيح اسم الملف هنا
+import '../../data/cities_data.dart'; // --- تم التأكد من صحة الاستيراد
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,7 +29,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     
-    final List<String> citiesForUserCountry = citiesByCountry[user.country] ?? [];
+    // --- بداية التعديل 1: استخدام CitiesData لجلب كل المدن للدولة ---
+    final List<String> citiesForUserCountry = CitiesData.getRegions(user.country)
+        .expand((region) => CitiesData.getCities(user.country, region))
+        .toSet() // لإزالة أي تكرار محتمل
+        .toList()
+      ..sort(); // ترتيب أبجدي
+    // --- نهاية التعديل 1 ---
     
     List<String> tempSelectedCities = List<String>.from(user.subscribedCities);
     String searchQuery = '';
@@ -141,82 +143,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = Provider.of<UserProvider>(context).user;
+    // --- بداية التعديل 2: استخدام Consumer لضمان التعامل مع user nullable ---
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final user = userProvider.user;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.settings),
-        backgroundColor: AppColors.primaryColor,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('الحساب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: const Text(AppStrings.myProfile),
-                    onTap: () { /* ... */ },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text(AppStrings.logout),
-                    onTap: () async {
-                      await authProvider.signOut();
-                    },
-                  ),
-                  const SizedBox(height: 24),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text(AppStrings.settings),
+            backgroundColor: AppColors.primaryColor,
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : user == null
+                  ? const Center(child: Text('لا توجد بيانات مستخدم'))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('الحساب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                          const Divider(),
+                          ListTile(
+                            leading: const Icon(Icons.person),
+                            title: const Text(AppStrings.myProfile),
+                            onTap: () {
+                              // Navigate to profile screen or edit profile
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.logout),
+                            title: const Text(AppStrings.logout),
+                            onTap: () async {
+                              await authProvider.signOut();
+                              // The AuthWrapper will handle navigation
+                            },
+                          ),
+                          const SizedBox(height: 24),
 
-                  if (user?.userType == AppStrings.craftsman) ...[
-                    Text('تنبيهات الطلبات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.location_city),
-                      title: const Text('مدن التنبيهات'),
-                      subtitle: Text(
-                        (user.subscribedCities.isNotEmpty)
-                            ? user.subscribedCities.join(', ')
-                            : 'لم تختر أي مدن بعد',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                          if (user.userType == AppStrings.craftsman) ...[
+                            Text('تنبيهات الطلبات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                            const Divider(),
+                            ListTile(
+                              leading: const Icon(Icons.location_city),
+                              title: const Text('مدن التنبيهات'),
+                              subtitle: Text(
+                                (user.subscribedCities.isNotEmpty)
+                                    ? user.subscribedCities.join(', ')
+                                    : 'لم تختر أي مدن بعد',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(Icons.edit),
+                              onTap: _showCitySelectionDialog,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          Text('المظهر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                          const Divider(),
+                          SwitchListTile(
+                            title: const Text(AppStrings.darkMode),
+                            value: themeProvider.isDarkMode,
+                            onChanged: (value) {
+                              themeProvider.toggleTheme(value);
+                            },
+                            secondary: const Icon(Icons.dark_mode_outlined),
+                          ),
+                          const SizedBox(height: 24),
+
+                          Text('حول التطبيق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                          const Divider(),
+                          ListTile(
+                            leading: const Icon(Icons.policy_outlined),
+                            title: const Text(AppStrings.privacyPolicy),
+                            onTap: () {
+                              // Navigate to privacy policy screen
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.description_outlined),
+                            title: const Text(AppStrings.termsOfService),
+                            onTap: () {
+                              // Navigate to terms of service screen
+                            },
+                          ),
+                        ],
                       ),
-                      trailing: const Icon(Icons.edit),
-                      onTap: _showCitySelectionDialog,
                     ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  Text('المظهر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
-                  const Divider(),
-                  SwitchListTile(
-                    title: const Text(AppStrings.darkMode),
-                    value: themeProvider.isDarkMode,
-                    onChanged: (value) {
-                      themeProvider.toggleTheme(value);
-                    },
-                    secondary: const Icon(Icons.dark_mode_outlined),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Text('حول التطبيق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.policy_outlined),
-                    title: const Text(AppStrings.privacyPolicy),
-                    onTap: () { /* ... */ },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.description_outlined),
-                    title: const Text(AppStrings.termsOfService),
-                    onTap: () { /* ... */ },
-                  ),
-                ],
-              ),
-            ),
+        );
+      },
     );
+    // --- نهاية التعديل 2 ---
   }
 }
