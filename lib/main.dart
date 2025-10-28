@@ -15,8 +15,9 @@ import 'providers/store_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main/main_screen_holder.dart';
-import 'providers/profession_provider.dart'; // <-- إضافة مهمة
+import 'providers/profession_provider.dart';
 
+// --- Main App Entry Point ---
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -40,7 +41,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => StoreProvider()),
-        ChangeNotifierProvider(create: (_) => ProfessionProvider()), // <-- إضافة مهمة
+        ChangeNotifierProvider(create: (_) => ProfessionProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -67,8 +68,7 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // --- بداية التعديل ---
-    // تهيئة Upgrader مع نقل الخصائص إلى هنا
+    // Upgrader configuration is now inside the Upgrader object itself.
     final upgrader = Upgrader(
       messages: UpgraderMessages(code: 'ar'),
       dialogStyle: UpgradeDialogStyle.material,
@@ -76,19 +76,16 @@ class AuthWrapper extends StatelessWidget {
       showIgnore: false,
       showLater: true,
     );
-    // --- نهاية التعديل ---
 
     return UpgradeAlert(
-      upgrader: upgrader, // استخدام الكائن المهيأ
+      upgrader: upgrader,
       child: StreamBuilder<UserModel?>(
         stream: authProvider.userStream,
         builder: (context, snapshot) {
-          // التحقق من حالة الاتصال لضمان عدم ظهور شاشة بيضاء
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
 
-          // معالجة الأخطاء المحتملة من الـ stream
           if (snapshot.hasError) {
             print('AuthWrapper Error: ${snapshot.error}');
             return const Scaffold(body: Center(child: Text('حدث خطأ في المصادقة')));
@@ -96,14 +93,11 @@ class AuthWrapper extends StatelessWidget {
 
           final UserModel? user = snapshot.data;
 
-          // إذا لم يكن هناك مستخدم مسجل الدخول
           if (user == null) {
-            // التأكد من تنظيف بيانات المستخدم القديم
             Provider.of<UserProvider>(context, listen: false).clearUser();
             return const LoginScreen();
           }
           
-          // إذا كان هناك مستخدم، قم بتعيينه في UserProvider
           Provider.of<UserProvider>(context, listen: false).setUser(user);
           return const MainScreenHolder();
         },
