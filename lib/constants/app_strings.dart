@@ -216,5 +216,12 @@ class AppStrings {
   static const String ok = 'موافق';
   static const String professionAndCityRequired = 'الرجاء اختيار المهنة ومدينة عمل واحدة على الأقل';
 
-  // --- تم حذف متغير "citiesByCountry" من هنا ---
+  // --- بداية الإضافة: متغيرات لشريط التنقل السفلي ---
+  static const String craftsmenLabel = availableCraftsmen;
+  static const String requestsLabel = requests;
+  static const String chatsLabel = chats;
+  static const String profileLabel = profile;
+  static const String settingsLabel = settings;
+  static const String storeLabel = 'المتجر';
+  // --- نهاية الإضافة ---
 }
