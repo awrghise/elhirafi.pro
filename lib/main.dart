@@ -1,5 +1,3 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -28,9 +26,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await NotificationService().init();
-  // --- بداية التعديل: استخدام الاستدعاء المباشر للدالة الـ static ---
   await AdsService.initialize();
-  // --- نهاية التعديل ---
   runApp(const MyApp());
 }
 
@@ -76,38 +72,33 @@ class AuthWrapper extends StatelessWidget {
     // تهيئة Upgrader
     final upgrader = Upgrader(
       messages: UpgraderMessages(code: 'ar'),
-    );
-
-    return UpgradeAlert(
-      upgrader: upgrader,
-      // --- بداية التعديل: إضافة الخصائص هنا ---
+      // --- بداية التعديل: نقل الخصائص إلى هنا ---
       dialogStyle: UpgradeDialogStyle.material,
       canDismissDialog: true,
       showIgnore: false,
       showLater: true,
-      // --- نهاية التعديل ---
+    );
+
+    return UpgradeAlert(
+      upgrader: upgrader,
       child: StreamBuilder<UserModel?>(
-        // --- بداية التعديل: استخدام اسم الـ Stream الصحيح ---
-        stream: authProvider.onAuthStateChanged,
+        // --- بداية التعديل: استخدام اسم الـ Stream الصحيح من AuthProvider ---
+        stream: authProvider.userStream,
         // --- نهاية التعديل ---
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          if (snapshot.connectionState == ConnectionState.active) {
+            final UserModel? user = snapshot.data;
+            if (user == null) {
+              Provider.of<UserProvider>(context, listen: false).clearUser();
+              return const LoginScreen();
+            }
+            
+            Provider.of<UserProvider>(context, listen: false).setUser(user);
+            return const MainScreenHolder();
           }
 
-          if (snapshot.hasError) {
-            print('AuthWrapper Error: ${snapshot.error}');
-            return const Scaffold(body: Center(child: Text('حدث خطأ في المصادقة')));
-          }
-
-          final UserModel? user = snapshot.data;
-          if (user == null) {
-            Provider.of<UserProvider>(context, listen: false).clearUser();
-            return const LoginScreen();
-          }
-          
-          Provider.of<UserProvider>(context, listen: false).setUser(user);
-          return const MainScreenHolder();
+          // عرض شاشة تحميل أثناء انتظار حالة المصادقة الأولية
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
         },
       ),
     );
