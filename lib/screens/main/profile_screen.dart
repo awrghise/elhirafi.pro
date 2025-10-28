@@ -1,12 +1,10 @@
-// lib/screens/main/profile_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../auth/register_screen.dart';
-import '../../models/user_model.dart'; // Import UserModel
+import '../../models/user_model.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -67,11 +65,13 @@ class ProfileScreen extends StatelessWidget {
             _buildInfoTile(Icons.phone, 'رقم الهاتف', user.phoneNumber),
             _buildInfoTile(Icons.person_outline, 'نوع الحساب', user.userType),
             if (user.userType == AppStrings.craftsman) ...[
-              _buildInfoTile(Icons.work, 'المهنة', user.professionName ?? 'غير محدد'),
-              // --- بداية التعديل ---
-              _buildInfoTile(Icons.location_city, 'مدينة العمل الأساسية', user.primaryWorkCity ?? 'غير محدد'),
-              // --- نهاية التعديل ---
-              _buildInfoTile(Icons.notifications_active, 'مدن التنبيهات', user.alertCities.join(', ')),
+              // --- بداية التعديل 1: استخدام الحقل الصحيح ---
+              _buildInfoTile(Icons.work, 'المهنة', user.profession),
+              // --- نهاية التعديل 1 ---
+              _buildInfoTile(Icons.location_city, 'مدينة العمل الأساسية', user.primaryWorkCity),
+              // --- بداية التعديل 2: استخدام الحقل الصحيح ---
+              _buildInfoTile(Icons.notifications_active, 'مدن التنبيهات', user.subscribedCities.join(', ')),
+              // --- نهاية التعديل 2 ---
             ],
             const Divider(),
             const SizedBox(height: 20),
