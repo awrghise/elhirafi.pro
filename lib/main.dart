@@ -67,19 +67,17 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // تهيئة Upgrader بدون الخصائص الإضافية
+    // الكود المتوافق مع النسخة المحدثة من upgrader
     final upgrader = Upgrader(
       messages: UpgraderMessages(code: 'ar'),
-    );
-
-    // --- بداية الحل النهائي ---
-    // إعادة الخصائص إلى ويدجت UpgradeAlert كما هو متوقع في الإصدار القديم
-    return UpgradeAlert(
-      upgrader: upgrader,
       dialogStyle: UpgradeDialogStyle.material,
       canDismissDialog: true,
       showIgnore: false,
       showLater: true,
+    );
+
+    return UpgradeAlert(
+      upgrader: upgrader,
       child: StreamBuilder<UserModel?>(
         stream: authProvider.userStream,
         builder: (context, snapshot) {
@@ -104,6 +102,5 @@ class AuthWrapper extends StatelessWidget {
         },
       ),
     );
-    // --- نهاية الحل النهائي ---
   }
 }
