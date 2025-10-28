@@ -7,16 +7,12 @@ import 'firebase_options.dart';
 import 'services/ads_service.dart';
 import 'services/notification_service.dart';
 import 'models/user_model.dart';
-
-// Providers
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/craftsmen_provider.dart';
 import 'providers/store_provider.dart';
 import 'providers/theme_provider.dart';
-
-// Screens
 import 'screens/auth/login_screen.dart';
 import 'screens/main/main_screen_holder.dart';
 
@@ -72,7 +68,7 @@ class AuthWrapper extends StatelessWidget {
     // تهيئة Upgrader
     final upgrader = Upgrader(
       messages: UpgraderMessages(code: 'ar'),
-      // --- بداية التعديل 1: نقل الخصائص إلى هنا ---
+      // --- بداية التعديل: نقل الخصائص إلى هنا ---
       dialogStyle: UpgradeDialogStyle.material,
       canDismissDialog: true,
       showIgnore: false,
@@ -82,11 +78,8 @@ class AuthWrapper extends StatelessWidget {
     return UpgradeAlert(
       upgrader: upgrader,
       child: StreamBuilder<UserModel?>(
-        // --- بداية التعديل 2: استخدام الـ Stream الصحيح من AuthProvider ---
         stream: authProvider.userStream,
-        // --- نهاية التعديل 2 ---
         builder: (context, snapshot) {
-          // عرض شاشة تحميل أثناء انتظار حالة المصادقة الأولية
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
