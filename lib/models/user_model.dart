@@ -4,106 +4,124 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
   final String id;
-  final String name;
   final String email;
+  final String name;
   final String phoneNumber;
   final String userType;
   final String profileImageUrl;
-  final String? professionName;
-  final List<String> alertCities;
-  final String? primaryWorkCity; // <-- بداية التعديل: إعادة الحقل
-  final String? country;
-  final bool? isAvailable;
+  final String profession;
+  final int experience;
+  final String primaryWorkCity;
+  final String country;
+  final bool isAvailable;
   final double rating;
   final int reviewCount;
-  final Timestamp createdAt;
+  final DateTime createdAt;
+  // --- بداية الإضافة: إضافة حقل مدن التنبيهات ---
+  final List<String> subscribedCities;
+  // --- نهاية الإضافة ---
 
   UserModel({
     required this.id,
-    required this.name,
     required this.email,
-    required this.phoneNumber,
-    required this.userType,
+    this.name = '',
+    this.phoneNumber = '',
+    this.userType = 'client',
     this.profileImageUrl = '',
-    this.professionName,
-    this.alertCities = const [],
-    this.primaryWorkCity, // <-- تعديل المُنشئ
-    this.country,
-    this.isAvailable,
+    this.profession = '',
+    this.experience = 0,
+    this.primaryWorkCity = '',
+    this.country = '',
+    this.isAvailable = false,
     this.rating = 0.0,
     this.reviewCount = 0,
     required this.createdAt,
+    // --- بداية الإضافة ---
+    this.subscribedCities = const [],
+    // --- نهاية الإضافة ---
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
       id: doc.id,
-      name: data['name'] ?? '',
       email: data['email'] ?? '',
+      name: data['name'] ?? '',
       phoneNumber: data['phoneNumber'] ?? '',
       userType: data['userType'] ?? 'client',
       profileImageUrl: data['profileImageUrl'] ?? '',
-      professionName: data['professionName'],
-      alertCities: List<String>.from(data['alertCities'] ?? []),
-      primaryWorkCity: data['primaryWorkCity'], // <-- قراءة الحقل من Firestore
-      country: data['country'],
-      isAvailable: data['isAvailable'],
+      profession: data['profession'] ?? '',
+      experience: data['experience'] ?? 0,
+      primaryWorkCity: data['primaryWorkCity'] ?? '',
+      country: data['country'] ?? '',
+      isAvailable: data['isAvailable'] ?? false,
       rating: (data['rating'] ?? 0.0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
-      createdAt: data['createdAt'] ?? Timestamp.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // --- بداية الإضافة: قراءة الحقل من Firestore ---
+      subscribedCities: List<String>.from(data['subscribedCities'] ?? []),
+      // --- نهاية الإضافة ---
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
-      'name': name,
       'email': email,
+      'name': name,
       'phoneNumber': phoneNumber,
       'userType': userType,
       'profileImageUrl': profileImageUrl,
-      'professionName': professionName,
-      'alertCities': alertCities,
-      'primaryWorkCity': primaryWorkCity, // <-- كتابة الحقل إلى Firestore
+      'profession': profession,
+      'experience': experience,
+      'primaryWorkCity': primaryWorkCity,
       'country': country,
       'isAvailable': isAvailable,
       'rating': rating,
       'reviewCount': reviewCount,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
+      // --- بداية الإضافة: كتابة الحقل في Firestore ---
+      'subscribedCities': subscribedCities,
+      // --- نهاية الإضافة ---
     };
   }
-  
+
   UserModel copyWith({
     String? id,
-    String? name,
     String? email,
+    String? name,
     String? phoneNumber,
     String? userType,
     String? profileImageUrl,
-    String? professionName,
-    List<String>? alertCities,
-    String? primaryWorkCity, // <-- تعديل دالة النسخ
+    String? profession,
+    int? experience,
+    String? primaryWorkCity,
     String? country,
     bool? isAvailable,
     double? rating,
     int? reviewCount,
-    Timestamp? createdAt,
+    DateTime? createdAt,
+    // --- بداية الإضافة ---
+    List<String>? subscribedCities,
+    // --- نهاية الإضافة ---
   }) {
     return UserModel(
       id: id ?? this.id,
-      name: name ?? this.name,
       email: email ?? this.email,
+      name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       userType: userType ?? this.userType,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      professionName: professionName ?? this.professionName,
-      alertCities: alertCities ?? this.alertCities,
-      primaryWorkCity: primaryWorkCity ?? this.primaryWorkCity, // <-- نهاية التعديل
+      profession: profession ?? this.profession,
+      experience: experience ?? this.experience,
+      primaryWorkCity: primaryWorkCity ?? this.primaryWorkCity,
       country: country ?? this.country,
       isAvailable: isAvailable ?? this.isAvailable,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
       createdAt: createdAt ?? this.createdAt,
+      // --- بداية الإضافة ---
+      subscribedCities: subscribedCities ?? this.subscribedCities,
+      // --- نهاية الإضافة ---
     );
   }
 }
