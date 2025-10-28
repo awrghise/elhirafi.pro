@@ -48,7 +48,7 @@ dependencies:
   shared_preferences: ^2.2.2
   path_provider: ^2.1.1
   uuid: ^4.2.2
-  upgrader: ^4.1.0 # <-- الحزمة التي أضفناها بشكل صحيح
+  upgrader: ^10.3.0 # <-- تم التحديث إلى الإصدار الصحيح هنا
 
   # HTTP & Networking
   http: ^1.1.2
