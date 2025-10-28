@@ -7,10 +7,9 @@ import '../../constants/app_strings.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
-import '../../data/professions_data.dart';
+import '../../models/profession_model.dart'; // <-- تم تغيير مسار الاستيراد هنا
 import '../../data/cities_data.dart';
 import '../chat/chat_detail_screen.dart';
-import '../../models/profession_model.dart'; // <-- هذا هو السطر الذي تم إضافته
 
 class AvailableCraftsmenScreen extends StatefulWidget {
   const AvailableCraftsmenScreen({super.key});
@@ -138,6 +137,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       appBar: AppBar(
         title: const Text(AppStrings.availableCraftsmen),
         backgroundColor: AppColors.primaryColor,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -172,7 +172,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               ),
               items: [
                 const DropdownMenuItem(value: null, child: Text('جميع المهن')),
-                ..._professionsData.getAllProfessions().map((Profession profession) {
+                ..._professionsData.getAllProfessions().map((profession) {
                   return DropdownMenuItem(
                     value: profession.conceptKey,
                     child: Text(profession.getNameByDialect('AR')),
@@ -260,7 +260,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
             return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
           }
           final craftsman = _craftsmen[index];
-          if (craftsman.id == currentUser?.id) {
+          if (currentUser != null && craftsman.id == currentUser.id) {
             return const SizedBox.shrink();
           }
           return _buildCraftsmanCard(craftsman, currentUser);
