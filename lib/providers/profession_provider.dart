@@ -1,15 +1,10 @@
 import 'package:flutter/foundation.dart';
-import '../data/professions_data.dart'; // <-- استيراد المصدر الوحيد للبيانات
-import '../models/profession_model.dart';
+import '../models/profession_model.dart'; // <-- تم تغيير مسار الاستيراد هنا
 
 class ProfessionProvider with ChangeNotifier {
-  // --- بداية التعديل: الاعتماد على مصدر واحد للبيانات ---
   final ProfessionsData _professionsData = ProfessionsData();
   
-  // Getter بسيط للوصول إلى البيانات
   ProfessionsData get professionsData => _professionsData;
-
-  // --- إعادة الدوال المساعدة التي تحتاجها الشاشات الأخرى ---
 
   List<Profession> getAllProfessions() {
     return _professionsData.getAllProfessions();
@@ -22,5 +17,4 @@ class ProfessionProvider with ChangeNotifier {
   String getLocalizedProfessionName(String conceptKey, String dialect) {
     return _professionsData.getLocalizedProfessionName(conceptKey, dialect);
   }
-  // --- نهاية التعديل ---
 }
