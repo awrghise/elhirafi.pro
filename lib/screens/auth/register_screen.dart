@@ -1,5 +1,3 @@
-// lib/screens/auth/register_screen.dart
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -13,6 +11,7 @@ import '../../widgets/custom_text_field.dart';
 import '../../data/cities_data.dart';
 import '../../data/professions_data.dart';
 import '../../models/user_model.dart';
+import '../../models/profession_model.dart'; // استيراد Profession model
 
 class RegisterScreen extends StatefulWidget {
   final bool isEditing;
@@ -38,12 +37,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _userType;
   String? _selectedProfession;
   String? _selectedCountry;
-  String? _selectedPrimaryCity;
+  String? _selectedRegion; // لتخزين المنطقة/الجهة
+  String? _selectedPrimaryCity; // لتخزين المدينة/العمالة
   File? _image;
   String? _networkImageUrl;
 
   final ImagePicker _picker = ImagePicker();
   final ProfessionsData _professionsData = ProfessionsData();
+  List<String> _regions = [];
+  List<String> _cities = [];
 
   @override
   void initState() {
@@ -54,12 +56,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _emailController.text = user.email;
       _phoneController.text = user.phoneNumber;
       _userType = user.userType;
-      _selectedProfession = user.professionName;
+      // --- بداية التعديل 1: استخدام الحقول الصحيحة ---
+      _selectedProfession = user.profession;
       _selectedCountry = user.country;
-      // --- بداية التعديل ---
-      _selectedPrimaryCity = user.primaryWorkCity; // <-- استخدام الحقل الصحيح
-      // --- نهاية التعديل ---
+      _selectedPrimaryCity = user.primaryWorkCity;
+      // --- نهاية التعديل 1 ---
       _networkImageUrl = user.profileImageUrl;
+
+      // تحميل المناطق والمدن إذا كانت الدولة محددة
+      if (_selectedCountry != null && _selectedCountry!.isNotEmpty) {
+        _regions = CitiesData.getRegions(_selectedCountry!);
+        // ملاحظة: لا يمكننا تحديد المنطقة تلقائيًا من المدينة فقط، لذا سنتركها
+      }
+
     } else {
       _userType = AppStrings.client;
     }
@@ -91,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_userType == AppStrings.craftsman && (_selectedProfession == null || _selectedPrimaryCity == null || _selectedCountry == null)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي (بما في ذلك المدينة الأساسية)')),
+          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي (الدولة، المهنة، مدينة العمل)')),
         );
       }
       return;
@@ -101,13 +110,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     try {
       if (widget.isEditing) {
+        // --- بداية التعديل 2: استخدام الحقول الصحيحة في التحديث ---
         Map<String, dynamic> updates = {
           'name': _nameController.text.trim(),
           'phoneNumber': _phoneController.text.trim(),
-          'professionName': _selectedProfession,
-          'primaryWorkCity': _selectedPrimaryCity, // <-- استخدام الحقل الصحيح
+          'profession': _selectedProfession,
+          'primaryWorkCity': _selectedPrimaryCity,
           'country': _selectedCountry,
         };
+        // --- نهاية التعديل 2 ---
         await authProvider.updateUserProfileWithImage(
           userId: widget.userToEdit!.id,
           data: updates,
@@ -119,17 +130,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
         }
       } else {
+        // --- بداية التعديل 3: استخدام الحقول الصحيحة في التسجيل ---
         await authProvider.register(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
           name: _nameController.text.trim(),
           phoneNumber: _phoneController.text.trim(),
           userType: _userType!,
-          professionName: _selectedProfession,
-          primaryCity: _selectedPrimaryCity, // authProvider.register يتوقع 'primaryCity'
+          profession: _selectedProfession,
+          primaryWorkCity: _selectedPrimaryCity,
           country: _selectedCountry,
           profileImage: _image,
         );
+        // --- نهاية التعديل 3 ---
         if(mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('تم التسجيل بنجاح')),
@@ -137,6 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
       if (mounted) {
+        // العودة إلى الشاشة السابقة بعد إتمام العملية بنجاح
         Navigator.of(context).pop();
       }
     } catch (e) {
@@ -154,6 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'تعديل الملف الشخصي' : 'إنشاء حساب'),
+        backgroundColor: AppColors.primaryColor,
       ),
       body: auth.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -205,7 +220,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       _buildProfessionDropdown(),
                       const SizedBox(height: 16),
-                      _buildPrimaryCityDropdown(),
+                      _buildRegionDropdown(), // --- إضافة قائمة المناطق
+                      const SizedBox(height: 16),
+                      _buildPrimaryCityDropdown(), // --- تعديل قائمة المدن
                     ],
                     const SizedBox(height: 24),
                     CustomButton(
@@ -327,6 +344,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onChanged: (newValue) {
             setState(() {
               _selectedCountry = newValue;
+              _regions = newValue != null ? CitiesData.getRegions(newValue) : [];
+              _selectedRegion = null;
+              _cities = [];
               _selectedPrimaryCity = null;
             });
           },
@@ -347,9 +367,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           value: _selectedProfession,
           isExpanded: true,
           hint: const Text(AppStrings.selectProfession),
-          items: _professionsData.getAllProfessions().map((profession) {
+          items: _professionsData.getAllProfessions().map((Profession profession) {
             return DropdownMenuItem<String>(
-              value: profession.getNameByDialect('AR'),
+              value: profession.conceptKey, // استخدام conceptKey كقيمة فريدة
               child: Text(profession.getNameByDialect('AR'), style: const TextStyle(fontSize: 14)),
             );
           }).toList(),
@@ -363,9 +383,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildPrimaryCityDropdown() {
-    final regions = _selectedCountry != null ? CitiesData.getRegions(_selectedCountry!) : <String>[];
-    
+  Widget _buildRegionDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       decoration: BoxDecoration(
@@ -375,16 +393,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _selectedPrimaryCity,
+          value: _selectedRegion,
           isExpanded: true,
-          hint: const Text('اختر مدينة العمل الأساسية'),
-          items: regions.map((String region) {
+          hint: const Text('اختر الجهة / الولاية'),
+          items: _regions.map((String region) {
             return DropdownMenuItem<String>(
               value: region,
               child: Text(region, style: const TextStyle(fontSize: 14)),
             );
           }).toList(),
           onChanged: _selectedCountry == null ? null : (newValue) {
+            setState(() {
+              _selectedRegion = newValue;
+              _cities = (newValue != null && _selectedCountry != null)
+                  ? CitiesData.getCities(_selectedCountry!, newValue)
+                  : [];
+              _selectedPrimaryCity = null;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryCityDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey),
+        color: _selectedRegion == null ? Colors.grey[200] : Colors.transparent,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedPrimaryCity,
+          isExpanded: true,
+          hint: const Text('اختر مدينة العمل الأساسية'),
+          items: _cities.map((String city) {
+            return DropdownMenuItem<String>(
+              value: city,
+              child: Text(city, style: const TextStyle(fontSize: 14)),
+            );
+          }).toList(),
+          onChanged: _selectedRegion == null ? null : (newValue) {
             setState(() {
               _selectedPrimaryCity = newValue;
             });
