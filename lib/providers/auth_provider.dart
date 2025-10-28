@@ -1,5 +1,3 @@
-// lib/providers/auth_provider.dart
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -20,22 +18,33 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // --- بداية التعديل 1: إضافة المتغير المفقود ---
+  // --- بداية التعديل 1: إضافة getter للتحقق من المصادقة ---
   bool get isAuthenticated => _user != null;
-  // --- نهاية التعديل 1 ---
 
+  // --- بداية التعديل 2: إضافة Stream لمراقبة حالة المستخدم ---
+  Stream<UserModel?> get userStream {
+    return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
+      if (firebaseUser == null) {
+        _user = null;
+        return null;
+      }
+      await _fetchUser(firebaseUser.uid);
+      return _user;
+    });
+  }
+
+  // الدالة القديمة للاستماع داخلياً فقط
   AuthProvider() {
     _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
   }
 
   Future<void> _onAuthStateChanged(auth.User? firebaseUser) async {
-    _setLoading(true);
     if (firebaseUser == null) {
       _user = null;
     } else {
       await _fetchUser(firebaseUser.uid);
     }
-    _setLoading(false);
+    notifyListeners();
   }
 
   Future<void> _fetchUser(String userId) async {
@@ -56,8 +65,8 @@ class AuthProvider with ChangeNotifier {
     required String name,
     required String phoneNumber,
     required String userType,
-    String? professionName,
-    String? primaryCity,
+    String? profession, // --- تعديل 3: تغيير اسم المعلمة
+    String? primaryWorkCity, // --- تعديل 3: تغيير اسم المعلمة
     String? country,
     File? profileImage,
   }) async {
@@ -73,6 +82,7 @@ class AuthProvider with ChangeNotifier {
         profileImageUrl = await _uploadProfileImage(userCredential.user!.uid, profileImage);
       }
 
+      // --- بداية التعديل 4: تصحيح مُنشئ UserModel ---
       UserModel newUser = UserModel(
         id: userCredential.user!.uid,
         name: name,
@@ -80,13 +90,17 @@ class AuthProvider with ChangeNotifier {
         phoneNumber: phoneNumber,
         userType: userType,
         profileImageUrl: profileImageUrl,
-        professionName: professionName,
-        primaryWorkCity: primaryCity,
-        country: country,
-        alertCities: primaryCity != null ? [primaryCity] : [],
-        isAvailable: userType == AppStrings.craftsman ? true : null,
-        createdAt: Timestamp.now(),
+        profession: profession ?? '', // استخدام الاسم الصحيح وتوفير قيمة افتراضية
+        primaryWorkCity: primaryWorkCity ?? '', // استخدام الاسم الصحيح وتوفير قيمة افتراضية
+        country: country ?? '', // توفير قيمة افتراضية
+        subscribedCities: primaryWorkCity != null ? [primaryWorkCity] : [], // استخدام الاسم الصحيح
+        isAvailable: userType == AppStrings.craftsman, // توفير قيمة bool مباشرة
+        createdAt: DateTime.now(), // استخدام DateTime.now()
+        experience: 0,
+        rating: 0.0,
+        reviewCount: 0,
       );
+      // --- نهاية التعديل 4 ---
 
       await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
       _user = newUser;
@@ -115,7 +129,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // --- بداية التعديل 2: إضافة الدالة المفقودة ---
+  // --- بداية التعديل 5: إضافة دالة إعادة تعيين كلمة المرور ---
   Future<void> sendPasswordResetEmail(String email) async {
     _setLoading(true);
     try {
@@ -126,7 +140,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-  // --- نهاية التعديل 2 ---
+  // --- نهاية التعديل 5 ---
 
   Future<String> _uploadProfileImage(String userId, File image) async {
     try {
@@ -150,8 +164,7 @@ class AuthProvider with ChangeNotifier {
         data['profileImageUrl'] = await _uploadProfileImage(userId, newImage);
       }
       await _firestore.collection('users').doc(userId).update(data);
-      await _fetchUser(userId);
-      notifyListeners();
+      await _fetchUser(userId); // إعادة تحميل بيانات المستخدم بعد التحديث
     } catch (e) {
       rethrow;
     } finally {
@@ -159,7 +172,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية التعديل 3: إضافة الدالة المفقودة ---
+  // --- بداية التعديل 6: إضافة دالة تحديث نوع المستخدم ---
   Future<void> updateUserType(String newUserType) async {
     if (_user == null) return;
     _setLoading(true);
@@ -172,7 +185,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
-  // --- نهاية التعديل 3 ---
+  // --- نهاية التعديل 6 ---
 
   Future<void> updateAvailability(bool isAvailable) async {
     if (_user == null) return;
