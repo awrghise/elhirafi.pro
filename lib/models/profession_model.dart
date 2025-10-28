@@ -1,46 +1,344 @@
-// تم حذف كلاس ProfessionsData المكرر بالكامل من هذا الملف
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:alsana_alharfiyin/models/user_model.dart';
+import 'package:alsana_alharfiyin/providers/auth_provider.dart';
+import 'package:alsana_alharfiyin/constants/app_colors.dart';
+import 'package:alsana_alharfiyin/constants/app_strings.dart';
+import 'package:alsana_alharfiyin/widgets/banner_ad_widget.dart';
+import 'package:alsana_alharfiyin/services/store_service.dart';
+import 'package:alsana_alharfiyin/models/product_model.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:alsana_alharfiyin/screens/supplier/public_store_screen.dart';
+import 'package:alsana_alharfiyin/screens/main/settings_screen.dart';
 
-class Profession {
-  final String id;
-  final String conceptKey; // المفهوم العام للمهنة (building, plumbing, etc.)
-  final Map<String, String> dialectNames; // أسماء المهنة بكل لهجة
-  final String category; // فئة المهنة (construction, decoration, etc.)
-  final String description;
-  final bool isActive;
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
-  Profession({
-    required this.id,
-    required this.conceptKey,
-    required this.dialectNames,
-    required this.category,
-    required this.description,
-    this.isActive = true,
-  });
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
 
-  factory Profession.fromMap(Map<String, dynamic> map) {
-    return Profession(
-      id: map['id'] ?? '',
-      conceptKey: map['conceptKey'] ?? '',
-      dialectNames: Map<String, String>.from(map['dialectNames'] ?? {}),
-      category: map['category'] ?? '',
-      description: map['description'] ?? '',
-      isActive: map['isActive'] ?? true,
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('مرحباً ${user.name}'),
+        backgroundColor: AppColors.primaryColor,
+        automaticallyImplyLeading: false, // لإخفاء سهم الرجوع
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              Share.share(
+                'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _buildDashboard(context, user),
+          ),
+          const BannerAdWidget(screenName: 'HomeScreen'),
+        ],
+      ),
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'conceptKey': conceptKey,
-      'dialectNames': dialectNames,
-      'category': category,
-      'description': description,
-      'isActive': isActive,
-    };
+  Widget _buildDashboard(BuildContext context, UserModel user) {
+    switch (user.userType) {
+      case AppStrings.client:
+        return const _ClientDashboard();
+      case AppStrings.craftsman:
+        return _CraftsmanDashboard(user: user);
+      case AppStrings.supplier:
+        return _SupplierDashboard(user: user);
+      default:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 80, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'نوع المستخدم غير معروف: ${user.userType}',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Provider.of<AuthProvider>(context, listen: false).signOut();
+                },
+                child: const Text('تسجيل الخروج'),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+}
+
+class _ClientDashboard extends StatelessWidget {
+  const _ClientDashboard();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.build_circle, size: 100, color: AppColors.primaryColor),
+            SizedBox(height: 24),
+            Text('لوحة تحكم العميل', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
+            Text('ابحث عن الحرفيين والمتاجر أو أنشئ طلب جديد', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CraftsmanDashboard extends StatelessWidget {
+  final UserModel user;
+  const _CraftsmanDashboard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.handyman, size: 100, color: AppColors.primaryColor),
+            const SizedBox(height: 24),
+            const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Text('المهنة: ${user.profession}', style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('جاهز للعمل'),
+                const SizedBox(width: 16),
+                Switch(
+                  value: user.isAvailable,
+                  onChanged: (value) async {
+                    await Provider.of<AuthProvider>(context, listen: false).updateAvailability(value);
+                  },
+                  activeColor: AppColors.primaryColor,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SupplierDashboard extends StatefulWidget {
+  final UserModel user;
+  const _SupplierDashboard({required this.user});
+
+  @override
+  State<_SupplierDashboard> createState() => _SupplierDashboardState();
+}
+
+class _SupplierDashboardState extends State<_SupplierDashboard> {
+  final StoreService _storeService = StoreService();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatsCards(),
+          const SizedBox(height: 24),
+          _buildQuickActions(),
+          const SizedBox(height: 24),
+          const Text('أحدث المنتجات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildRecentProducts(),
+        ],
+      ),
+    );
   }
 
-  // الحصول على اسم المهنة باللهجة المحددة
-  String getNameByDialect(String dialect) {
-    return dialectNames[dialect] ?? dialectNames['AR'] ?? conceptKey;
+  Widget _buildStatsCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            title: 'المنتجات',
+            icon: Icons.inventory_2,
+            color: Colors.blue,
+            future: _storeService.getProductCount(widget.user.id),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            title: 'الطلبات',
+            icon: Icons.shopping_cart,
+            color: Colors.orange,
+            future: _storeService.getOrdersCount(widget.user.id),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _QuickActionButton(
+          icon: Icons.settings_applications,
+          label: 'إدارة المتجر',
+          onTap: () {
+            // Navigator.pushNamed(context, '/store_management');
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.add_circle,
+          label: 'إضافة منتج',
+          onTap: () {
+            // Navigator.pushNamed(context, '/store_management');
+          },
+        ),
+        _QuickActionButton(
+          icon: Icons.visibility,
+          label: 'عرض المتجر',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PublicStoreScreen(storeId: widget.user.id),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentProducts() {
+    return StreamBuilder<List<ProductModel>>(
+      stream: _storeService.getStoreProducts(widget.user.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('لم تقم بإضافة أي منتجات بعد.'));
+        }
+        final products = snapshot.data!;
+        final recentProducts = products.take(3).toList();
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: recentProducts.length,
+          separatorBuilder: (context, index) => const Divider(),
+          itemBuilder: (context, index) {
+            final product = recentProducts[index];
+            return ListTile(
+              leading: product.imageUrls.isNotEmpty
+                  ? Image.network(product.imageUrls.first, width: 50, height: 50, fit: BoxFit.cover)
+                  : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image)),
+              title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${product.price} درهم'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final Future<int> future;
+
+  const _StatCard({required this.title, required this.icon, required this.color, required this.future});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 30, color: color),
+            const SizedBox(height: 8),
+            Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            const SizedBox(height: 4),
+            FutureBuilder<int>(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2));
+                }
+                return Text(
+                  snapshot.data?.toString() ?? '0',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 30, color: AppColors.primaryColor),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
+    );
   }
 }
