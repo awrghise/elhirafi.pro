@@ -17,7 +17,6 @@ import 'screens/auth/login_screen.dart';
 import 'screens/main/main_screen_holder.dart';
 import 'providers/profession_provider.dart';
 
-// --- Main App Entry Point ---
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -68,17 +67,19 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // Upgrader configuration is now inside the Upgrader object itself.
+    // تهيئة Upgrader بدون الخصائص الإضافية
     final upgrader = Upgrader(
       messages: UpgraderMessages(code: 'ar'),
+    );
+
+    // --- بداية الحل النهائي ---
+    // إعادة الخصائص إلى ويدجت UpgradeAlert كما هو متوقع في الإصدار القديم
+    return UpgradeAlert(
+      upgrader: upgrader,
       dialogStyle: UpgradeDialogStyle.material,
       canDismissDialog: true,
       showIgnore: false,
       showLater: true,
-    );
-
-    return UpgradeAlert(
-      upgrader: upgrader,
       child: StreamBuilder<UserModel?>(
         stream: authProvider.userStream,
         builder: (context, snapshot) {
@@ -103,5 +104,6 @@ class AuthWrapper extends StatelessWidget {
         },
       ),
     );
+    // --- نهاية الحل النهائي ---
   }
 }
