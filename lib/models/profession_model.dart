@@ -1,344 +1,186 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:alsana_alharfiyin/models/user_model.dart';
-import 'package:alsana_alharfiyin/providers/auth_provider.dart';
-import 'package:alsana_alharfiyin/constants/app_colors.dart';
-import 'package:alsana_alharfiyin/constants/app_strings.dart';
-import 'package:alsana_alharfiyin/widgets/banner_ad_widget.dart';
-import 'package:alsana_alharfiyin/services/store_service.dart';
-import 'package:alsana_alharfiyin/models/product_model.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:alsana_alharfiyin/screens/supplier/public_store_screen.dart';
-import 'package:alsana_alharfiyin/screens/main/settings_screen.dart';
+// هذا الملف هو المصدر الوحيد لكل ما يتعلق بالمهن
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class Profession {
+  final String id;
+  final String conceptKey;
+  final Map<String, String> dialectNames;
+  final String category;
+  final String description;
+  final bool isActive;
 
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
+  Profession({
+    required this.id,
+    required this.conceptKey,
+    required this.dialectNames,
+    required this.category,
+    required this.description,
+    this.isActive = true,
+  });
 
-    if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+  factory Profession.fromMap(Map<String, dynamic> map) {
+    return Profession(
+      id: map['id'] ?? '',
+      conceptKey: map['conceptKey'] ?? '',
+      dialectNames: Map<String, String>.from(map['dialectNames'] ?? {}),
+      category: map['category'] ?? '',
+      description: map['description'] ?? '',
+      isActive: map['isActive'] ?? true,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'conceptKey': conceptKey,
+      'dialectNames': dialectNames,
+      'category': category,
+      'description': description,
+      'isActive': isActive,
+    };
+  }
+
+  String getNameByDialect(String dialect) {
+    return dialectNames[dialect] ?? dialectNames['AR'] ?? conceptKey;
+  }
+}
+
+// --- بداية الدمج: نقل كلاس البيانات إلى هنا ---
+class ProfessionsData {
+  final List<Profession> professions = [
+    Profession(
+      id: 'building',
+      conceptKey: 'building',
+      dialectNames: {'MA': 'بناي', 'DZ': 'ماصو', 'TN': 'بنّاي', 'AR': 'بناء'},
+      category: 'construction',
+      description: 'أعمال البناء والخرسانة',
+    ),
+    Profession(
+      id: 'tiling',
+      conceptKey: 'tiling',
+      dialectNames: {'MA': 'زلايجي', 'DZ': 'كارلور', 'TN': 'بلانجي', 'AR': 'بلاط'},
+      category: 'construction',
+      description: 'أعمال البلاط والزليج',
+    ),
+    Profession(
+      id: 'plastering',
+      conceptKey: 'plastering',
+      dialectNames: {'MA': 'جباص', 'DZ': 'جباص', 'TN': 'جباص', 'AR': 'جبس'},
+      category: 'construction',
+      description: 'أعمال الجبس والتجصيص',
+    ),
+    Profession(
+      id: 'gypsum_carving',
+      conceptKey: 'gypsum_carving',
+      dialectNames: {'MA': 'نقاش', 'DZ': 'سكيلتور', 'TN': 'نقاش', 'AR': 'نقش الجبس'},
+      category: 'decoration',
+      description: 'النقش على الجبس',
+    ),
+    Profession(
+      id: 'gypsum_molds',
+      conceptKey: 'gypsum_molds',
+      dialectNames: {'MA': 'سطافور', 'DZ': 'سطافور', 'TN': 'سطافور', 'AR': 'صانع قوالب الجبس'},
+      category: 'decoration',
+      description: 'صناعة قوالب الجبس',
+    ),
+    Profession(
+      id: 'electrical',
+      conceptKey: 'electrical',
+      dialectNames: {'MA': 'تريسيان', 'DZ': 'تريسيان', 'TN': 'تريسيان', 'AR': 'كهرباء'},
+      category: 'technical',
+      description: 'أعمال الكهرباء',
+    ),
+    Profession(
+      id: 'plumbing',
+      conceptKey: 'plumbing',
+      dialectNames: {'MA': 'پلومبيي', 'DZ': 'پلومبيي', 'TN': 'بلومبيي', 'AR': 'سباكة'},
+      category: 'technical',
+      description: 'أعمال السباكة والترصيص',
+    ),
+    Profession(
+      id: 'carpentry',
+      conceptKey: 'carpentry',
+      dialectNames: {'MA': 'نجار', 'DZ': 'نجار', 'TN': 'نجّار', 'AR': 'نجارة'},
+      category: 'woodwork',
+      description: 'أعمال النجارة (خشب وألومنيوم)',
+    ),
+    Profession(
+      id: 'wood_carving',
+      conceptKey: 'wood_carving',
+      dialectNames: {'MA': 'نقاش خشب', 'DZ': 'نقاش خشب', 'TN': 'نقاش خشب', 'AR': 'نقش الخشب'},
+      category: 'decoration',
+      description: 'النقش على الخشب',
+    ),
+    Profession(
+      id: 'glasswork',
+      conceptKey: 'glasswork',
+      dialectNames: {'MA': 'زجاج', 'DZ': 'زجاج', 'TN': 'زجاج', 'AR': 'زجاج'},
+      category: 'technical',
+      description: 'أعمال الزجاج',
+    ),
+    Profession(
+      id: 'metalwork',
+      conceptKey: 'metalwork',
+      dialectNames: {'MA': 'سودور', 'DZ': 'سودور', 'TN': 'حدّاد', 'AR': 'حدادة'},
+      category: 'metalwork',
+      description: 'أعمال الحدادة واللحام',
+    ),
+    Profession(
+      id: 'painting',
+      conceptKey: 'painting',
+      dialectNames: {'MA': 'صباغ', 'DZ': 'پانتر', 'TN': 'دهّان', 'AR': 'صباغة'},
+      category: 'decoration',
+      description: 'أعمال الصباغة والدهان',
+    ),
+    Profession(
+      id: 'facade_decoration',
+      conceptKey: 'facade_decoration',
+      dialectNames: {'MA': 'معلم فرصاضة', 'DZ': 'معلم لا فاصاد', 'TN': 'معلم واجهات', 'AR': 'تهيئة الواجهات'},
+      category: 'decoration',
+      description: 'تهيئة وتزيين واجهات المنازل (كريفي، موشتي، باسطا، مونوكوش، ترافيرتينو)',
+    ),
+    Profession(
+      id: 'apprentice',
+      conceptKey: 'apprentice',
+      dialectNames: {'MA': 'خدام', 'DZ': 'خدام متعلم', 'TN': 'خدام', 'AR': 'متعلم حرفي'},
+      category: 'helper',
+      description: 'مساعد حرفي / متعلم',
+    ),
+    Profession(
+      id: 'day_laborer',
+      conceptKey: 'day_laborer',
+      dialectNames: {'MA': 'عطَّاش', 'DZ': 'لياطاش', 'TN': 'عامل', 'AR': 'عامل يومي'},
+      category: 'helper',
+      description: 'عامل يومي / بالمهمة (حمل المواد، أعمال الفورفي)',
+    ),
+  ];
+
+  List<Profession> getAllProfessions() {
+    return professions;
+  }
+
+  List<Profession> getProfessionsByDialect(String dialect) {
+    return professions.where((p) => p.dialectNames.containsKey(dialect)).toList();
+  }
+
+  Profession? findProfessionByName(String name, String dialect) {
+    try {
+      return professions.firstWhere((p) => p.getNameByDialect(dialect).toLowerCase() == name.toLowerCase());
+    } catch (e) {
+      return null;
     }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('مرحباً ${user.name}'),
-        backgroundColor: AppColors.primaryColor,
-        automaticallyImplyLeading: false, // لإخفاء سهم الرجوع
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              Share.share(
-                'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _buildDashboard(context, user),
-          ),
-          const BannerAdWidget(screenName: 'HomeScreen'),
-        ],
-      ),
-    );
   }
 
-  Widget _buildDashboard(BuildContext context, UserModel user) {
-    switch (user.userType) {
-      case AppStrings.client:
-        return const _ClientDashboard();
-      case AppStrings.craftsman:
-        return _CraftsmanDashboard(user: user);
-      case AppStrings.supplier:
-        return _SupplierDashboard(user: user);
-      default:
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 80, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'نوع المستخدم غير معروف: ${user.userType}',
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Provider.of<AuthProvider>(context, listen: false).signOut();
-                },
-                child: const Text('تسجيل الخروج'),
-              ),
-            ],
-          ),
-        );
+  Profession? getProfessionByConceptKey(String conceptKey) {
+    try {
+      return professions.firstWhere((p) => p.conceptKey == conceptKey);
+    } catch (e) {
+      return null;
     }
   }
-}
 
-class _ClientDashboard extends StatelessWidget {
-  const _ClientDashboard();
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.build_circle, size: 100, color: AppColors.primaryColor),
-            SizedBox(height: 24),
-            Text('لوحة تحكم العميل', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 16),
-            Text('ابحث عن الحرفيين والمتاجر أو أنشئ طلب جديد', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-          ],
-        ),
-      ),
-    );
+  String getLocalizedProfessionName(String conceptKey, String dialect) {
+    final profession = getProfessionByConceptKey(conceptKey);
+    return profession?.getNameByDialect(dialect) ?? conceptKey;
   }
 }
-
-class _CraftsmanDashboard extends StatelessWidget {
-  final UserModel user;
-  const _CraftsmanDashboard({required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.handyman, size: 100, color: AppColors.primaryColor),
-            const SizedBox(height: 24),
-            const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Text('المهنة: ${user.profession}', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('جاهز للعمل'),
-                const SizedBox(width: 16),
-                Switch(
-                  value: user.isAvailable,
-                  onChanged: (value) async {
-                    await Provider.of<AuthProvider>(context, listen: false).updateAvailability(value);
-                  },
-                  activeColor: AppColors.primaryColor,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SupplierDashboard extends StatefulWidget {
-  final UserModel user;
-  const _SupplierDashboard({required this.user});
-
-  @override
-  State<_SupplierDashboard> createState() => _SupplierDashboardState();
-}
-
-class _SupplierDashboardState extends State<_SupplierDashboard> {
-  final StoreService _storeService = StoreService();
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStatsCards(),
-          const SizedBox(height: 24),
-          _buildQuickActions(),
-          const SizedBox(height: 24),
-          const Text('أحدث المنتجات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          _buildRecentProducts(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            title: 'المنتجات',
-            icon: Icons.inventory_2,
-            color: Colors.blue,
-            future: _storeService.getProductCount(widget.user.id),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            title: 'الطلبات',
-            icon: Icons.shopping_cart,
-            color: Colors.orange,
-            future: _storeService.getOrdersCount(widget.user.id),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _QuickActionButton(
-          icon: Icons.settings_applications,
-          label: 'إدارة المتجر',
-          onTap: () {
-            // Navigator.pushNamed(context, '/store_management');
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.add_circle,
-          label: 'إضافة منتج',
-          onTap: () {
-            // Navigator.pushNamed(context, '/store_management');
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.visibility,
-          label: 'عرض المتجر',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PublicStoreScreen(storeId: widget.user.id),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentProducts() {
-    return StreamBuilder<List<ProductModel>>(
-      stream: _storeService.getStoreProducts(widget.user.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('لم تقم بإضافة أي منتجات بعد.'));
-        }
-        final products = snapshot.data!;
-        final recentProducts = products.take(3).toList();
-        return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: recentProducts.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final product = recentProducts[index];
-            return ListTile(
-              leading: product.imageUrls.isNotEmpty
-                  ? Image.network(product.imageUrls.first, width: 50, height: 50, fit: BoxFit.cover)
-                  : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image)),
-              title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('${product.price} درهم'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final Future<int> future;
-
-  const _StatCard({required this.title, required this.icon, required this.color, required this.future});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(icon, size: 30, color: color),
-            const SizedBox(height: 8),
-            Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-            const SizedBox(height: 4),
-            FutureBuilder<int>(
-              future: future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2));
-                }
-                return Text(
-                  snapshot.data?.toString() ?? '0',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickActionButton({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Icon(icon, size: 30, color: AppColors.primaryColor),
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// --- نهاية الدمج ---
