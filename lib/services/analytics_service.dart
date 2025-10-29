@@ -1,6 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart'; // Added for FlutterErrorDetails
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart'; // <-- تمت الإضافة
 
 class AnalyticsService {
   static final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
@@ -8,10 +9,7 @@ class AnalyticsService {
 
   // Initialize Analytics
   static Future<void> initialize() async {
-    // Enable analytics collection
     await _analytics.setAnalyticsCollectionEnabled(true);
-    
-    // Enable crashlytics collection
     await _crashlytics.setCrashlyticsCollectionEnabled(true);
   }
 
@@ -72,7 +70,7 @@ class AnalyticsService {
         'profession_type': professionType,
         'city': city,
         'country': country,
-        'has_text_description': hasTextDescription,
+        'has_text_description': hasTextDescription.toString(), // <-- تم التعديل لضمان التوافق
       },
     );
   }
@@ -141,7 +139,7 @@ class AnalyticsService {
     await _analytics.logEvent(
       name: 'availability_toggled',
       parameters: {
-        'is_available': isAvailable,
+        'is_available': isAvailable.toString(), // <-- تم التعديل لضمان التوافق
         'profession': profession,
       },
     );
@@ -202,7 +200,7 @@ class AnalyticsService {
   }) async {
     if (customKeys != null) {
       for (final entry in customKeys.entries) {
-        await _crashlytics.setCustomKey(entry.key, entry.value);
+        await _crashlytics.setCustomKey(entry.key, entry.value.toString()); // <-- تم التعديل لضمان التوافق
       }
     }
     
@@ -221,13 +219,16 @@ class AnalyticsService {
   // Log Custom Events
   static Future<void> logCustomEvent({
     required String eventName,
-    Map<String, dynamic>? parameters,
+    Map<String, Object?>? parameters, // <-- تم التعديل هنا
   }) async {
     await _analytics.logEvent(
       name: eventName,
       parameters: parameters,
     );
   }
+
+  // الدالة المضافة لإصلاح الخطأ
+  static FirebaseAnalyticsObserver getAnalyticsObserver() {
+    return FirebaseAnalyticsObserver(analytics: _analytics);
+  }
 }
-
-
