@@ -1,5 +1,5 @@
 import 'package:alsana_alharfiyin/firebase_options.dart';
-import 'package:alsana_alharfiyin/models/user_model.dart'; // <-- تمت الإضافة
+import 'package:alsana_alharfiyin/models/user_model.dart';
 import 'package:alsana_alharfiyin/providers/auth_provider.dart';
 import 'package:alsana_alharfiyin/providers/chat_provider.dart';
 import 'package:alsana_alharfiyin/providers/craftsmen_provider.dart';
@@ -10,6 +10,8 @@ import 'package:alsana_alharfiyin/providers/theme_provider.dart';
 import 'package:alsana_alharfiyin/providers/user_provider.dart';
 import 'package:alsana_alharfiyin/screens/auth/login_screen.dart';
 import 'package:alsana_alharfiyin/screens/main/main_screen_holder.dart';
+import 'package:alsana_alharfiyin/services/analytics_service.dart'; // <-- تم إعادة تفعيله
+import 'package:alsana_alharfiyin/services/notification_service.dart'; // <-- تم إعادة تفعيله
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -21,6 +23,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService().init(); // <-- تم تعديل اسم الدالة
   runApp(const MyApp());
 }
 
@@ -55,8 +58,9 @@ class MyApp extends StatelessWidget {
               Locale('ar', ''), // Arabic
             ],
             locale: const Locale('ar', ''),
-            home: const UpgradeAlert( // <-- تم إصلاح const
-              child: AuthWrapper(),
+            navigatorObservers: [AnalyticsService.getAnalyticsObserver()], // <-- تم إعادة تفعيله
+            home: UpgradeAlert( // <-- تم حذف const
+              child: const AuthWrapper(),
             ),
           );
         },
@@ -72,11 +76,11 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    return StreamBuilder<UserModel?>( // <-- تم التعديل هنا
+    return StreamBuilder<UserModel?>(
       stream: authProvider.userStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.active) {
-          final UserModel? user = snapshot.data; // <-- تم التعديل هنا
+          final UserModel? user = snapshot.data;
           if (user == null) {
             return const LoginScreen();
           }
