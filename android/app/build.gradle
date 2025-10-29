@@ -2,7 +2,7 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
+    id 'com.google.gms.google-services'
 }
 
 def localProperties = new Properties()
@@ -25,8 +25,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.elsane3.app"
-    // تم تحديث compileSdk إلى 34 وهو الموصى به حاليًا
-    compileSdk 34
+    compileSdkVersion 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -43,25 +42,16 @@ android {
     }
 
     defaultConfig {
-        // يمكنك تغيير "com.elsane3.app" ليتوافق مع اسم الحزمة الخاص بك
         applicationId "com.elsane3.app"
-        // تم رفع minSdkVersion إلى 21 لمتطلبات التوافق الحديثة
         minSdkVersion 24
-        // تم تحديث targetSdkVersion إلى 34
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-        multiDexEnabled true
     }
 
     buildTypes {
         release {
-            // TODO: أضف إعدادات التوقيع الخاصة بك لإصدار release.
             signingConfig signingConfigs.debug
-            // تمكين R8 لتقليص حجم الكود والموارد
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -71,10 +61,10 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    // إضافة دعم multidex
-    implementation 'androidx.multidex:multidex:2.0.1'
-    // تم تحديث بعض الاعتماديات الأساسية لـ Firebase
-    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
+    implementation 'com.google.firebase:firebase-crashlytics'
 }
