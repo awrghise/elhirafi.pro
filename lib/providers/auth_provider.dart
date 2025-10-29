@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image/image.dart' as img; // <-- إضافة المكتبة
-import 'package:path_provider/path_provider.dart'; // <-- لإدارة الملفات المؤقتة
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import '../models/user_model.dart';
 import '../constants/app_strings.dart';
 
@@ -22,6 +22,7 @@ class AuthProvider with ChangeNotifier {
 
   bool get isAuthenticated => _user != null;
 
+  // هذا هو الـ Stream الصحيح الذي يتوافق مع main.dart
   Stream<UserModel?> get userStream {
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
@@ -33,18 +34,10 @@ class AuthProvider with ChangeNotifier {
     });
   }
 
-  AuthProvider() {
-    _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
-  }
-
-  Future<void> _onAuthStateChanged(auth.User? firebaseUser) async {
-    if (firebaseUser == null) {
-      _user = null;
-    } else {
-      await _fetchUser(firebaseUser.uid);
-    }
-    notifyListeners();
-  }
+  // تم حذف الـ listener القديم لأنه يسبب استدعاءات متعددة وغير ضرورية
+  // AuthProvider() {
+  //   _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
+  // }
 
   Future<void> _fetchUser(String userId) async {
     try {
@@ -56,6 +49,7 @@ class AuthProvider with ChangeNotifier {
       print("Error fetching user: $e");
       _user = null;
     }
+    // notifyListeners() يتم استدعاؤها من خلال الـ StreamBuilder
   }
 
   Future<void> register({
@@ -82,7 +76,7 @@ class AuthProvider with ChangeNotifier {
       }
 
       UserModel newUser = UserModel(
-        id: userCredential.user!.uid,
+        uid: userCredential.user!.uid, // تم تغيير 'id' إلى 'uid' لتتوافق مع النموذج
         name: name,
         email: email,
         phoneNumber: phoneNumber,
@@ -99,7 +93,7 @@ class AuthProvider with ChangeNotifier {
         reviewCount: 0,
       );
 
-      await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
+      await _firestore.collection('users').doc(newUser.uid).set(newUser.toFirestore()); // تم تغيير 'id' إلى 'uid'
       _user = newUser;
       
     } catch (e) {
@@ -137,16 +131,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // --- بداية تعديل دالة رفع الصورة ---
   Future<String> _uploadProfileImage(String userId, File imageFile) async {
     try {
-      // 1. قراءة وضغط الصورة
       final bytes = await imageFile.readAsBytes();
       img.Image? image = img.decodeImage(bytes);
 
       if (image == null) return '';
 
-      // 2. تغيير حجم الصورة إذا كانت كبيرة
       if (image.width > 1024 || image.height > 1024) {
         image = img.copyResize(
           image,
@@ -155,17 +146,14 @@ class AuthProvider with ChangeNotifier {
         );
       }
 
-      // 3. ضغط الجودة وحفظها كملف مؤقت
       final compressedBytes = img.encodeJpg(image, quality: 85);
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/$userId.jpg');
       await tempFile.writeAsBytes(compressedBytes);
 
-      // 4. رفع الملف المضغوط إلى Firebase Storage
       final ref = _storage.ref().child('profile_images').child('$userId.jpg');
       await ref.putFile(tempFile);
 
-      // 5. حذف الملف المؤقت
       await tempFile.delete();
 
       return await ref.getDownloadURL();
@@ -174,7 +162,6 @@ class AuthProvider with ChangeNotifier {
       return '';
     }
   }
-  // --- نهاية تعديل دالة رفع الصورة ---
   
   Future<void> updateUserProfileWithImage({
     required String userId,
@@ -199,7 +186,7 @@ class AuthProvider with ChangeNotifier {
     if (_user == null) return;
     _setLoading(true);
     try {
-      await _firestore.collection('users').doc(_user!.id).update({'userType': newUserType});
+      await _firestore.collection('users').doc(_user!.uid).update({'userType': newUserType}); // تم تغيير 'id' إلى 'uid'
       _user = _user!.copyWith(userType: newUserType);
     } catch (e) {
       print("Error updating user type: $e");
@@ -212,7 +199,7 @@ class AuthProvider with ChangeNotifier {
     if (_user == null) return;
     _setLoading(true);
     try {
-      await _firestore.collection('users').doc(_user!.id).update({'isAvailable': isAvailable});
+      await _firestore.collection('users').doc(_user!.uid).update({'isAvailable': isAvailable}); // تم تغيير 'id' إلى 'uid'
       _user = _user!.copyWith(isAvailable: isAvailable);
     } catch (e) {
       print("Error updating availability: $e");
