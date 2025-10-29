@@ -48,7 +48,7 @@ android {
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         
         // تم تغيير السطر التالي لحل مشكلة تعارض الحزم
-        minSdkVersion 23
+        minSdkVersion 24
         
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
