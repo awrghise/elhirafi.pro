@@ -1,4 +1,5 @@
 import 'package:alsana_alharfiyin/firebase_options.dart';
+import 'package:alsana_alharfiyin/models/user_model.dart'; // <-- تمت الإضافة
 import 'package:alsana_alharfiyin/providers/auth_provider.dart';
 import 'package:alsana_alharfiyin/providers/chat_provider.dart';
 import 'package:alsana_alharfiyin/providers/craftsmen_provider.dart';
@@ -9,10 +10,7 @@ import 'package:alsana_alharfiyin/providers/theme_provider.dart';
 import 'package:alsana_alharfiyin/providers/user_provider.dart';
 import 'package:alsana_alharfiyin/screens/auth/login_screen.dart';
 import 'package:alsana_alharfiyin/screens/main/main_screen_holder.dart';
-// import 'package:alsana_alharfiyin/services/analytics_service.dart'; // Unused import
-// import 'package:alsana_alharfiyin/services/notification_service.dart'; // Unused import
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fbAuth; // <-- تم التعديل هنا
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +21,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // await NotificationService().initNotifications();
   runApp(const MyApp());
 }
 
@@ -35,7 +32,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()), // <-- هذا هو الـ AuthProvider الصحيح الخاص بك
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProfessionProvider()),
         ChangeNotifierProvider(create: (_) => CraftsmenProvider()),
@@ -58,8 +55,7 @@ class MyApp extends StatelessWidget {
               Locale('ar', ''), // Arabic
             ],
             locale: const Locale('ar', ''),
-            // navigatorObservers: [AnalyticsService.getAnalyticsObserver()],
-            home: const UpgradeAlert(
+            home: const UpgradeAlert( // <-- تم إصلاح const
               child: AuthWrapper(),
             ),
           );
@@ -76,11 +72,11 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    return StreamBuilder<fbAuth.User?>( // <-- تم التعديل هنا
+    return StreamBuilder<UserModel?>( // <-- تم التعديل هنا
       stream: authProvider.userStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.active) {
-          final fbAuth.User? user = snapshot.data; // <-- تم التعديل هنا
+          final UserModel? user = snapshot.data; // <-- تم التعديل هنا
           if (user == null) {
             return const LoginScreen();
           }
