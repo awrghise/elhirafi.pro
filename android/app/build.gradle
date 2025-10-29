@@ -46,7 +46,7 @@ android {
         // يمكنك تغيير "com.elsane3.app" ليتوافق مع اسم الحزمة الخاص بك
         applicationId "com.elsane3.app"
         // تم رفع minSdkVersion إلى 21 لمتطلبات التوافق الحديثة
-        minSdkVersion 21
+        minSdkVersion 23
         // تم تحديث targetSdkVersion إلى 34
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
