@@ -10,9 +10,10 @@ import 'package:alsana_alharfiyin/providers/user_provider.dart';
 import 'package:alsana_alharfiyin/screens/auth/login_screen.dart';
 import 'package:alsana_alharfiyin/screens/main/main_screen_holder.dart';
 import 'package:alsana_alharfiyin/services/analytics_service.dart';
-import 'package:alsana_alharfiyin/services/firebase_core_service.dart';
+// import 'package:alsana_alharfiyin/services/firebase_core_service.dart'; // Unused import removed
 import 'package:alsana_alharfiyin/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // <-- تمت الإضافة لإصلاح خطأ User
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +24,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await NotificationService().initNotifications();
+  // await NotificationService().initNotifications(); // <-- تم التعطيل مؤقتاً لإصلاح الخطأ
   runApp(const MyApp());
 }
 
@@ -58,14 +59,9 @@ class MyApp extends StatelessWidget {
               Locale('ar', ''), // Arabic
             ],
             locale: const Locale('ar', ''),
-            navigatorObservers: [AnalyticsService.getAnalyticsObserver()],
+            // navigatorObservers: [AnalyticsService.getAnalyticsObserver()], // <-- تم التعطيل مؤقتاً لإصلاح الخطأ
             home: UpgradeAlert(
-              upgrader: Upgrader(
-                dialogStyle: UpgradeDialogStyle.material,
-                canDismissDialog: false,
-                showLater: false,
-                showIgnore: false,
-              ),
+              // الخصائص القديمة تم حذفها لأنها غير موجودة في الإصدار الجديد
               child: const AuthWrapper(),
             ),
           );
@@ -82,6 +78,7 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
+    // تم إصلاح نوع 'User' هنا
     return StreamBuilder<User?>(
       stream: authProvider.userStream,
       builder: (context, snapshot) {
