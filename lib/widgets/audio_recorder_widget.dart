@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,10 +22,11 @@ class AudioRecorderWidget extends StatefulWidget {
 
 class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     with SingleTickerProviderStateMixin {
-  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioRecorder _audioRecorder = AudioRecorder(); // هذا صحيح للإصدار الجديد
   bool _isRecording = false;
   bool _isPaused = false;
-  String? _audioPath;
+  // String? _audioPath; // لم يعد هذا الحقل مستخدمًا بشكل مباشر هنا
+
   late AnimationController _animationController;
   late Animation<double> _animation;
 
@@ -34,7 +36,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
+    );
     _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -73,20 +75,20 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
       final filePath =
           '${directory.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      await _audioRecorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-        path: filePath,
+      // الإصدار الجديد يستخدم RecordConfig بهذه الطريقة
+      const config = RecordConfig(
+        encoder: AudioEncoder.aacLc, // هذا صحيح
+        bitRate: 128000,
+        sampleRate: 44100,
       );
+
+      await _audioRecorder.start(config, path: filePath);
 
       setState(() {
         _isRecording = true;
         _isPaused = false;
-        _audioPath = filePath;
       });
+      _animationController.repeat(reverse: true); // بدء الأنيميشن
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,6 +104,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   Future<void> _stopRecording() async {
     try {
       final path = await _audioRecorder.stop();
+      _animationController.stop(); // إيقاف الأنيميشن
       setState(() {
         _isRecording = false;
         _isPaused = false;
@@ -125,6 +128,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   Future<void> _pauseRecording() async {
     try {
       await _audioRecorder.pause();
+      _animationController.stop(); // إيقاف الأنيميشن عند الإيقاف المؤقت
       setState(() {
         _isPaused = true;
       });
@@ -143,6 +147,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   Future<void> _resumeRecording() async {
     try {
       await _audioRecorder.resume();
+      _animationController.repeat(reverse: true); // إعادة تشغيل الأنيميشن عند الاستئناف
       setState(() {
         _isPaused = false;
       });
@@ -200,7 +205,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.errorColor.withOpacity(0.2), // الاستخدام هنا مقبول
+                      color: AppColors.errorColor.withOpacity(0.2),
                     ),
                     child: const Icon(
                       Icons.mic,
@@ -254,7 +259,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
               onPressed: _startRecording,
               icon: const Icon(Icons.mic, color: Colors.white),
               label: const Text(
-                AppStrings.recordAudio, // تم التعديل من startRecording
+                AppStrings.recordAudio,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -275,11 +280,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
           if (_isRecording) ...[
             const SizedBox(height: 16),
             Text(
-              _isPaused ? AppStrings.pauseAudio : AppStrings.stopRecording, // تم التعديل
+              _isPaused ? AppStrings.pauseAudio : AppStrings.stopRecording,
               style: TextStyle(
                 fontSize: 14,
                 color: _isPaused
                     ? AppColors.textSecondaryColor
+                    // ignore: deprecated_member_use
                     : AppColors.errorColor,
                 fontWeight: FontWeight.w500,
               ),
