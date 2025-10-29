@@ -1,12 +1,19 @@
 buildscript {
-    ext.kotlin_version = '1.9.22'
+    // تم استخدام إصدار Kotlin الذي حددته أنت، وهو ممتاز
+    ext.kotlin_version = '1.9.22' 
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
+        // هذا هو السطر الحاسم الذي كان ناقصًا في الكود الأصلي
+        classpath 'com.android.tools.build:gradle:8.2.0' 
+        
+        // هذا هو السطر الذي أضفته أنت، وهو صحيح
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        
+        // هذا هو السطر الخاص بـ Firebase، وهو ضروري
         classpath 'com.google.gms:google-services:4.3.15'
     }
 }
