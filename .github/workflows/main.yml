@@ -1,53 +1,48 @@
-name: Flutter CI
+name: Build Flutter App
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - main # أو أي فرع تستخدمه للبناء
 
 jobs:
   build:
-    # استخدام بيئة بناء أحدث ومضمونة
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
+      # 1. جلب الكود من المستودع
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # الخطوة 1: إعداد بيئة Java بشكل صريح ومستقر (إصدار 17)
-      - name: Set up JDK 17
+      # 2. إعداد بيئة Java (ضرورية لـ Android)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+          java-version: '17' # الإصدار 17 موصى به لمشاريع Android الحديثة
 
-      # الخطوة 2: إعداد Flutter بشكل صريح ومستقر
+      # 3. إعداد بيئة Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.22.2' # استخدم نفس إصدار Flutter الذي تعمل به محليًا
           channel: 'stable'
-          cache: true # تفعيل التخزين المؤقت لتسريع العمليات المستقبلية
+          cache: true # تفعيل الكاش لتسريع عمليات البناء المستقبلية
 
-      # الخطوة 3: تنظيف ذاكرة Gradle المؤقتة القديمة (خطوة احترازية)
-      - name: Clean Gradle
-        run: ./android/gradlew clean
-
-      # الخطوة 4: تثبيت الاعتماديات
+      # 4. تثبيت الاعتماديات
       - name: Install dependencies
         run: flutter pub get
 
-      # الخطوة 5: بناء التطبيق
-      - name: Build Android APK
+      # 5. بناء التطبيق (APK)
+      # هذا هو التعديل الأساسي: استخدام أمر flutter build apk
+      # بدلاً من استدعاء gradlew مباشرة بشكل خاطئ.
+      # سيقوم Flutter بتشغيل Gradle بالمسار والإعدادات الصحيحة.
+      - name: Build APK
         run: flutter build apk --release
 
-      # الخطوة 6: رفع ملف APK
-      - name: Upload Android APK artifact
+      # 6. (اختياري) رفع ملف APK كـ "artifact" لتتمكن من تحميله
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
