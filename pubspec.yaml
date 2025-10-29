@@ -41,7 +41,7 @@ dependencies:
   flutter_sound: ^9.3.0
 
   # App Updates
-  upgrader: ^11.0.0
+  upgrader: ^10.3.0
 
   # Ads
   google_mobile_ads: ^5.1.0
