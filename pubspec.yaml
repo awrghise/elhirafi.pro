@@ -28,10 +28,8 @@ dependencies:
   flutter_markdown: ^0.6.20
   cached_network_image: ^3.3.1
   
-  # --- بداية التعديل ---
-  # تحديث المكتبة إلى إصدار حديث ومتوافق
+  # المكتبة المحدثة
   upgrader: ^12.1.0
-  # --- نهاية التعديل ---
 
   # Device & OS Access
   image_picker: ^1.0.8
