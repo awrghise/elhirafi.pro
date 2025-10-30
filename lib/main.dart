@@ -10,8 +10,8 @@ import 'package:alsana_alharfiyin/providers/theme_provider.dart';
 import 'package:alsana_alharfiyin/providers/user_provider.dart';
 import 'package:alsana_alharfiyin/screens/auth/login_screen.dart';
 import 'package:alsana_alharfiyin/screens/main/main_screen_holder.dart';
-import 'package:alsana_alharfiyin/services/analytics_service.dart'; // <-- تم إعادة تفعيله
-import 'package:alsana_alharfiyin/services/notification_service.dart'; // <-- تم إعادة تفعيله
+import 'package:alsana_alharfiyin/services/analytics_service.dart';
+import 'package:alsana_alharfiyin/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,7 +23,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await NotificationService().init(); // <-- تم تعديل اسم الدالة
+  await NotificationService().init();
   runApp(const MyApp());
 }
 
@@ -58,8 +58,8 @@ class MyApp extends StatelessWidget {
               Locale('ar', ''), // Arabic
             ],
             locale: const Locale('ar', ''),
-            navigatorObservers: [AnalyticsService.getAnalyticsObserver()], // <-- تم إعادة تفعيله
-            home: UpgradeAlert( // <-- تم حذف const
+            navigatorObservers: [AnalyticsService.getAnalyticsObserver()],
+            home: UpgradeAlert(
               child: const AuthWrapper(),
             ),
           );
@@ -74,11 +74,26 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- بداية التعديل ---
+    // الاستماع إلى AuthProvider للحصول على تحديثات فورية
     final authProvider = Provider.of<AuthProvider>(context);
 
+    // التحقق المباشر من وجود المستخدم في الـ Provider
+    // هذا يحل مشكلة التأخير التي تحدث مع الـ Stream أحيانًا
+    if (authProvider.user != null) {
+      return const MainScreenHolder();
+    }
+
+    // الاستمرار في استخدام StreamBuilder كآلية احتياطية وللتعامل مع تسجيل الخروج
     return StreamBuilder<UserModel?>(
       stream: authProvider.userStream,
       builder: (context, snapshot) {
+        // إذا كان المستخدم موجودًا في الـ Provider، اعرض الواجهة الرئيسية مباشرة
+        if (authProvider.user != null) {
+          return const MainScreenHolder();
+        }
+        
+        // إذا كان الـ Stream يحتوي على بيانات مستخدم، اعرض الواجهة الرئيسية
         if (snapshot.connectionState == ConnectionState.active) {
           final UserModel? user = snapshot.data;
           if (user == null) {
@@ -86,6 +101,8 @@ class AuthWrapper extends StatelessWidget {
           }
           return const MainScreenHolder();
         }
+
+        // في جميع الحالات الأخرى (مثل التحميل الأولي)، اعرض شاشة التحميل
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),
@@ -93,5 +110,6 @@ class AuthWrapper extends StatelessWidget {
         );
       },
     );
+    // --- نهاية التعديل ---
   }
 }
