@@ -1,5 +1,4 @@
 buildscript {
-    // تم رفع إصدار Kotlin إلى 1.9.23 وهو إصدار حديث ومتوافق
     ext.kotlin_version = '1.9.23'
     repositories {
         google()
@@ -7,10 +6,8 @@ buildscript {
     }
 
     dependencies {
-        // تم تحديث إصدار gradle plugin ليتوافق مع الإصدارات الحديثة
         classpath 'com.android.tools.build:gradle:8.2.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        // تم تحديث google-services plugin
         classpath 'com.google.gms:google-services:4.4.2'
     }
 }
@@ -25,6 +22,18 @@ allprojects {
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                compileSdkVersion 34
+                if (project.android.hasProperty('defaultConfig')) {
+                    project.android.defaultConfig {
+                        targetSdkVersion 34
+                    }
+                }
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(':app')
