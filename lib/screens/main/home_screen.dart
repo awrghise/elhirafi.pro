@@ -1,362 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:alsana_alharfiyin/models/user_model.dart';
-import 'package:alsana_alharfiyin/providers/auth_provider.dart';
-import 'package:alsana_alharfiyin/constants/app_colors.dart';
-import 'package:alsana_alharfiyin/constants/app_strings.dart';
-import 'package:alsana_alharfiyin/widgets/banner_ad_widget.dart';
-import 'package:alsana_alharfiyin/services/store_service.dart';
-import 'package:alsana_alharfiyin/models/product_model.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:alsana_alharfiyin/screens/supplier/public_store_screen.dart';
-import 'package:alsana_alharfiyin/screens/main/settings_screen.dart';
-// --- بداية الإضافة ---
-import 'package:alsana_alharfiyin/providers/profession_provider.dart';
-// --- نهاية الإضافة ---
+import '../../constants/app_colors.dart';
+import '../../constants/app_strings.dart';
+import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
+import 'settings_screen.dart'; // استيراد شاشة الإعدادات
 
-// --- HomeScreen Widget ---
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
+    final UserModel? user = authProvider.user;
 
-    if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    // --- بداية التعديل: إضافة أيقونات القائمة والمشاركة في الشريط العلوي ---
+    final appBarActions = [
+      // أيقونة المشاركة
+      IconButton(
+        icon: const Icon(Icons.share_outlined),
+        onPressed: () {
+          // يمكنك تخصيص الرسالة هنا
+          Share.share('تطبيق الصانع الحرفي - الحل الأمثل لإيجاد الحرفيين وخدماتهم. حمله الآن! [رابط التطبيق]');
+        },
+      ),
+      // أيقونة القائمة (بدلاً من الإعدادات)
+      IconButton(
+        icon: const Icon(Icons.menu), // تغيير الأيقونة إلى menu
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+          );
+        },
+      ),
+    ];
+    // --- نهاية التعديل ---
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('مرحباً ${user.name}'),
+        title: const Text(AppStrings.appName),
         backgroundColor: AppColors.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: 'مشاركة التطبيق',
-            onPressed: () {
-              Share.share(
-                'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'الإعدادات',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
+        actions: appBarActions, // استخدام الأيقونات المجهزة
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _buildDashboard(context, user),
-          ),
-          const BannerAdWidget(screenName: 'HomeScreen'),
-        ],
-      ),
+      body: user == null
+          ? const Center(child: CircularProgressIndicator())
+          : _buildUserDashboard(context, user),
     );
   }
 
-  Widget _buildDashboard(BuildContext context, UserModel user) {
+  Widget _buildUserDashboard(BuildContext context, UserModel user) {
+    // بناء لوحة التحكم بناءً على نوع المستخدم
     switch (user.userType) {
       case AppStrings.client:
-        return const _ClientDashboard();
+        return _buildClientDashboard(context, user);
       case AppStrings.craftsman:
-        return _CraftsmanDashboard(user: user);
+        return _buildCraftsmanDashboard(context, user);
       case AppStrings.supplier:
-        return _SupplierDashboard(user: user);
+        return _buildSupplierDashboard(context, user);
       default:
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 80, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'نوع المستخدم غير معروف: ${user.userType}',
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Provider.of<AuthProvider>(context, listen: false).signOut();
-                },
-                child: const Text('تسجيل الخروج'),
-              ),
-            ],
-          ),
-        );
+        return Center(child: Text('مرحباً ${user.name}'));
     }
   }
-}
 
-// --- Client Dashboard ---
-class _ClientDashboard extends StatelessWidget {
-  const _ClientDashboard();
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.build_circle, size: 100, color: AppColors.primaryColor),
-            SizedBox(height: 24),
-            Text('لوحة تحكم العميل', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 16),
-            Text('ابحث عن الحرفيين والمتاجر أو أنشئ طلب جديد', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Craftsman Dashboard ---
-class _CraftsmanDashboard extends StatelessWidget {
-  final UserModel user;
-  const _CraftsmanDashboard({required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    // --- بداية التعديل ---
-    // جلب ProfessionProvider لترجمة اسم المهنة
-    final professionProvider = Provider.of<ProfessionProvider>(context, listen: false);
-    final professionName = professionProvider.getLocalizedProfessionName(user.profession, 'AR');
-    // --- نهاية التعديل ---
-
+  // لوحة تحكم العميل
+  Widget _buildClientDashboard(BuildContext context, UserModel user) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.handyman, size: 100, color: AppColors.primaryColor),
-            const SizedBox(height: 24),
-            const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            // --- بداية التعديل ---
-            // عرض اسم المهنة المترجم
-            Text('المهنة: $professionName', style: const TextStyle(fontSize: 16)),
-            // --- نهاية التعديل ---
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('جاهز للعمل'),
-                const SizedBox(width: 16),
-                Switch(
-                  value: user.isAvailable,
-                  onChanged: (value) async {
-                    await Provider.of<AuthProvider>(context, listen: false).updateAvailability(value);
-                  },
-                  activeColor: AppColors.primaryColor,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Supplier Dashboard ---
-class _SupplierDashboard extends StatefulWidget {
-  final UserModel user;
-  const _SupplierDashboard({required this.user});
-
-  @override
-  State<_SupplierDashboard> createState() => _SupplierDashboardState();
-}
-
-class _SupplierDashboardState extends State<_SupplierDashboard> {
-  final StoreService _storeService = StoreService();
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStatsCards(),
-          const SizedBox(height: 24),
-          _buildQuickActions(),
-          const SizedBox(height: 24),
-          const Text('أحدث المنتجات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          _buildRecentProducts(),
+          Text('مرحباً بك يا عميل، ${user.name}!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          const Text('استعرض الحرفيين المتاحين أو ابحث عن منتجات في المتجر.'),
         ],
       ),
     );
   }
 
-  Widget _buildStatsCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            title: 'المنتجات',
-            icon: Icons.inventory_2,
-            color: Colors.blue,
-            future: _storeService.getProductCount(widget.user.id),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            title: 'الطلبات',
-            icon: Icons.shopping_cart,
-            color: Colors.orange,
-            future: _storeService.getOrdersCount(widget.user.id),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _QuickActionButton(
-          icon: Icons.settings_applications,
-          label: 'إدارة المتجر',
-          onTap: () {
-            // Navigator.pushNamed(context, '/store_management');
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.add_circle,
-          label: 'إضافة منتج',
-          onTap: () {
-            // Navigator.pushNamed(context, '/store_management');
-          },
-        ),
-        _QuickActionButton(
-          icon: Icons.visibility,
-          label: 'عرض المتجر',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PublicStoreScreen(storeId: widget.user.id),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentProducts() {
-    return StreamBuilder<List<ProductModel>>(
-      stream: _storeService.getStoreProducts(widget.user.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('لم تقم بإضافة أي منتجات بعد.'));
-        }
-        final products = snapshot.data!;
-        final recentProducts = products.take(3).toList();
-        return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: recentProducts.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final product = recentProducts[index];
-            return ListTile(
-              leading: product.imageUrls.isNotEmpty
-                  ? Image.network(product.imageUrls.first, width: 50, height: 50, fit: BoxFit.cover)
-                  : Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image)),
-              title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('${product.price} درهم'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// --- Stat Card Widget ---
-class _StatCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final Future<int> future;
-
-  const _StatCard({required this.title, required this.icon, required this.color, required this.future});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(icon, size: 30, color: color),
-            const SizedBox(height: 8),
-            Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-            const SizedBox(height: 4),
-            FutureBuilder<int>(
-              future: future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2));
-                }
-                return Text(
-                  snapshot.data?.toString() ?? '0',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                );
-              },
-            ),
-          ],
-        ),
+  // لوحة تحكم الحرفي
+  Widget _buildCraftsmanDashboard(BuildContext context, UserModel user) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('مرحباً بك يا حرفي، ${user.name}!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          const Text('تفقد طلبات العمل الجديدة وقم بإدارة ملفك الشخصي.'),
+        ],
       ),
     );
   }
-}
 
-// --- Quick Action Button Widget ---
-class _QuickActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickActionButton({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Icon(icon, size: 30, color: AppColors.primaryColor),
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
+  // لوحة تحكم المورد
+  Widget _buildSupplierDashboard(BuildContext context, UserModel user) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('مرحباً بك يا مورد، ${user.name}!', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          const Text('قم بإدارة متجرك ومنتجاتك من خلال قسم المتجر.'),
+        ],
       ),
     );
   }
