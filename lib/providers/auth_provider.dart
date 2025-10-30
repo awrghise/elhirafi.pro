@@ -38,6 +38,7 @@ class AuthProvider with ChangeNotifier {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
         _user = UserModel.fromFirestore(doc);
+        notifyListeners();
       }
     } catch (e) {
       print("Error fetching user: $e");
@@ -69,7 +70,7 @@ class AuthProvider with ChangeNotifier {
       }
 
       UserModel newUser = UserModel(
-        id: userCredential.user!.uid, // <-- تم التعديل هنا
+        id: userCredential.user!.uid,
         name: name,
         email: email,
         phoneNumber: phoneNumber,
@@ -86,8 +87,9 @@ class AuthProvider with ChangeNotifier {
         reviewCount: 0,
       );
 
-      await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore()); // <-- تم التعديل هنا
+      await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
       _user = newUser;
+      notifyListeners();
       
     } catch (e) {
       rethrow;
@@ -164,11 +166,16 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     try {
       if (newImage != null) {
-        data['profileImageUrl'] = await _uploadProfileImage(userId, newImage);
+        final imageUrl = await _uploadProfileImage(userId, newImage);
+        if (imageUrl.isNotEmpty) {
+          data['profileImageUrl'] = imageUrl;
+        }
       }
       await _firestore.collection('users').doc(userId).update(data);
       await _fetchUser(userId);
+      notifyListeners();
     } catch (e) {
+      print("Error updating profile: $e");
       rethrow;
     } finally {
       _setLoading(false);
@@ -179,8 +186,9 @@ class AuthProvider with ChangeNotifier {
     if (_user == null) return;
     _setLoading(true);
     try {
-      await _firestore.collection('users').doc(_user!.id).update({'userType': newUserType}); // <-- تم التعديل هنا
+      await _firestore.collection('users').doc(_user!.id).update({'userType': newUserType});
       _user = _user!.copyWith(userType: newUserType);
+      notifyListeners();
     } catch (e) {
       print("Error updating user type: $e");
     } finally {
@@ -192,8 +200,9 @@ class AuthProvider with ChangeNotifier {
     if (_user == null) return;
     _setLoading(true);
     try {
-      await _firestore.collection('users').doc(_user!.id).update({'isAvailable': isAvailable}); // <-- تم التعديل هنا
+      await _firestore.collection('users').doc(_user!.id).update({'isAvailable': isAvailable});
       _user = _user!.copyWith(isAvailable: isAvailable);
+      notifyListeners();
     } catch (e) {
       print("Error updating availability: $e");
     } finally {
