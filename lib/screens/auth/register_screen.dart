@@ -9,7 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../data/cities_data.dart';
-import '../../models/profession_model.dart'; // <-- تم تغيير مسار الاستيراد هنا
+import '../../models/profession_model.dart';
 import '../../models/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -323,7 +323,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onChanged: (newValue) {
             setState(() {
               _selectedCountry = newValue;
-              _selectedPrimaryCity = null;
+              _selectedPrimaryCity = null; // إعادة تعيين المدينة عند تغيير الدولة
             });
           },
         ),
@@ -359,14 +359,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // --- بداية التعديل ---
   Widget _buildPrimaryCityDropdown() {
-    final regions = _selectedCountry != null ? CitiesData.getRegions(_selectedCountry!) : <String>[];
-    
+    // جلب قائمة المدن الكاملة للدولة المختارة
+    final List<String> allCitiesForCountry = _selectedCountry != null
+        ? CitiesData.getRegions(_selectedCountry!)
+            .expand((region) => CitiesData.getCities(_selectedCountry!, region))
+            .toSet() // استخدام Set لإزالة التكرارات
+            .toList()
+          ..sort() // ترتيب القائمة أبجديًا
+        : [];
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8.0),
         border: Border.all(color: Colors.grey),
+        // تعطيل الحقل بصريًا إذا لم يتم اختيار الدولة
         color: _selectedCountry == null ? Colors.grey[200] : Colors.transparent,
       ),
       child: DropdownButtonHideUnderline(
@@ -374,14 +383,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           value: _selectedPrimaryCity,
           isExpanded: true,
           hint: const Text('اختر مدينة العمل الأساسية'),
-          items: regions.expand((region) {
-            return CitiesData.getCities(_selectedCountry!, region);
-          }).toSet().toList().map((String city) {
+          // استخدام قائمة المدن الكاملة والمُرتبة
+          items: allCitiesForCountry.map((String city) {
             return DropdownMenuItem<String>(
               value: city,
               child: Text(city, style: const TextStyle(fontSize: 14)),
             );
           }).toList(),
+          // تعطيل القائمة إذا لم يتم اختيار الدولة
           onChanged: _selectedCountry == null ? null : (newValue) {
             setState(() {
               _selectedPrimaryCity = newValue;
@@ -391,4 +400,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+  // --- نهاية التعديل ---
 }
