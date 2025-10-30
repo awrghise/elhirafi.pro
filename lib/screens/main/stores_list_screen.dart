@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
-import '../../models/store_model.dart';
-import '../../services/store_service.dart';
-import '../supplier/public_store_screen.dart';
+import '../../constants/app_strings.dart';
+import 'settings_screen.dart'; // استيراد شاشة الإعدادات
 
 class StoresListScreen extends StatefulWidget {
   const StoresListScreen({super.key});
@@ -13,61 +12,72 @@ class StoresListScreen extends StatefulWidget {
 }
 
 class _StoresListScreenState extends State<StoresListScreen> {
-  final StoreService _storeService = StoreService();
+  // بيانات وهمية مؤقتة لعرض التصميم
+  final List<Map<String, dynamic>> _stores = [
+    {'name': 'متجر مواد البناء الحديثة', 'owner': 'أحمد علي', 'image': 'assets/images/placeholder_image.png'},
+    {'name': 'الورشة الفنية للأخشاب', 'owner': 'فاطمة الزهراء', 'image': 'assets/images/placeholder_image.png'},
+    {'name': 'معرض الأصباغ والديكور', 'owner': 'يوسف إبراهيم', 'image': 'assets/images/placeholder_image.png'},
+    {'name': 'أدوات السباكة والكهرباء', 'owner': 'خالد منصور', 'image': 'assets/images/placeholder_image.png'},
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // --- بداية التعديل: إضافة AppBar مع أيقونات ---
       appBar: AppBar(
-        title: const Text('المتاجر'),
+        title: const Text(AppStrings.storesLabel),
         backgroundColor: AppColors.primaryColor,
-      ),
-      body: StreamBuilder<List<StoreModel>>(
-        stream: _storeService.getAllStores(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.storefront, size: 80, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('لا توجد متاجر متاحة حاليًا.'),
-                ],
-              ),
-            );
-          }
-
-          final stores = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(8.0),
-            itemCount: stores.length,
-            itemBuilder: (context, index) {
-              final store = stores[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryLightColor,
-                    child: Icon(Icons.store, color: Colors.white),
-                  ),
-                  title: Text(store.storeName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(store.address),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PublicStoreScreen(storeId: store.supplierId),
-                      ),
-                    );
-                  },
-                ),
+        automaticallyImplyLeading: false, // لإخفاء سهم الرجوع
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              Share.share('تصفح أفضل متاجر الحرفيين والموردين على تطبيق الصانع الحرفي! [رابط التطبيق]');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             },
+          ),
+        ],
+      ),
+      // --- نهاية التعديل ---
+      body: ListView.builder(
+        itemCount: _stores.length,
+        itemBuilder: (context, index) {
+          final store = _stores[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.asset(
+                  store['image'],
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              title: Text(
+                store['name'],
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text('صاحب المتجر: ${store['owner']}'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                // TODO: الانتقال إلى صفحة المتجر العامة لعرض المنتجات
+              },
+            ),
           );
         },
       ),
