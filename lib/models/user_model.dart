@@ -17,16 +17,14 @@ class UserModel {
   final double rating;
   final int reviewCount;
   final DateTime createdAt;
-  // --- بداية الإضافة: إضافة حقل مدن التنبيهات ---
   final List<String> subscribedCities;
-  // --- نهاية الإضافة ---
 
   UserModel({
     required this.id,
     required this.email,
     this.name = '',
     this.phoneNumber = '',
-    this.userType = 'client',
+    this.userType = 'عميل',
     this.profileImageUrl = '',
     this.profession = '',
     this.experience = 0,
@@ -36,19 +34,22 @@ class UserModel {
     this.rating = 0.0,
     this.reviewCount = 0,
     required this.createdAt,
-    // --- بداية الإضافة ---
     this.subscribedCities = const [],
-    // --- نهاية الإضافة ---
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    
+    // توحيد قيمة userType عند القراءة من Firestore
+    String rawUserType = data['userType'] ?? 'عميل';
+    String normalizedUserType = _normalizeUserType(rawUserType);
+    
     return UserModel(
       id: doc.id,
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       phoneNumber: data['phoneNumber'] ?? '',
-      userType: data['userType'] ?? 'client',
+      userType: normalizedUserType,
       profileImageUrl: data['profileImageUrl'] ?? '',
       profession: data['profession'] ?? '',
       experience: data['experience'] ?? 0,
@@ -58,10 +59,21 @@ class UserModel {
       rating: (data['rating'] ?? 0.0).toDouble(),
       reviewCount: data['reviewCount'] ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      // --- بداية الإضافة: قراءة الحقل من Firestore ---
       subscribedCities: List<String>.from(data['subscribedCities'] ?? []),
-      // --- نهاية الإضافة ---
     );
+  }
+
+  // دالة مساعدة لتوحيد نوع المستخدم
+  static String _normalizeUserType(String userType) {
+    final normalized = userType.trim().toLowerCase();
+    if (normalized == 'client' || normalized == 'عميل') {
+      return 'عميل';
+    } else if (normalized == 'craftsman' || normalized == 'حرفي') {
+      return 'حرفي';
+    } else if (normalized == 'supplier' || normalized == 'مورد') {
+      return 'مورد';
+    }
+    return 'عميل'; // القيمة الافتراضية
   }
 
   Map<String, dynamic> toFirestore() {
@@ -79,9 +91,7 @@ class UserModel {
       'rating': rating,
       'reviewCount': reviewCount,
       'createdAt': Timestamp.fromDate(createdAt),
-      // --- بداية الإضافة: كتابة الحقل في Firestore ---
       'subscribedCities': subscribedCities,
-      // --- نهاية الإضافة ---
     };
   }
 
@@ -100,9 +110,7 @@ class UserModel {
     double? rating,
     int? reviewCount,
     DateTime? createdAt,
-    // --- بداية الإضافة ---
     List<String>? subscribedCities,
-    // --- نهاية الإضافة ---
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -119,9 +127,7 @@ class UserModel {
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
       createdAt: createdAt ?? this.createdAt,
-      // --- بداية الإضافة ---
       subscribedCities: subscribedCities ?? this.subscribedCities,
-      // --- نهاية الإضافة ---
     );
   }
 }
