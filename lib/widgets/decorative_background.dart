@@ -36,7 +36,7 @@ class DecorativeBackground extends StatelessWidget {
             final icon = patternIcons[Random().nextInt(patternIcons.length)];
             return Icon(
               icon,
-              // استخدام لون رمادي فاتح جداً مع شفافية عالية
+              // استخدام لون رمادي يميل الى الاصفرار فاتح جداً مع شفافية عالية
               color: Theme.of(context).textTheme.bodyLarge!.color!.withOpacity(0.05),
               size: 40.0,
             );
