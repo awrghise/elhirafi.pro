@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
+import '../../widgets/decorative_background.dart';
 
-// --- بداية التعديل 1: استيراد ويدجت الخلفية ---
-import '../../widgets/decorative_background.dart'; 
+// --- بداية التعديل 1: استيراد ThemeProvider ---
+import '../../providers/theme_provider.dart';
 // --- نهاية التعديل 1 ---
 
 // استيراد جميع الشاشات الرئيسية
@@ -26,7 +27,6 @@ class MainScreenHolder extends StatefulWidget {
 class _MainScreenHolderState extends State<MainScreenHolder> {
   int _selectedIndex = 0;
 
-  // دالة مساعدة لتوحيد نوع المستخدم
   String _normalizeUserType(String userType) {
     final normalized = userType.trim().toLowerCase();
     if (normalized == 'client' || normalized == 'عميل') {
@@ -36,7 +36,7 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     } else if (normalized == 'supplier' || normalized == 'مورد') {
       return AppStrings.supplier;
     }
-    return 'عميل'; // قيمة افتراضية آمنة
+    return 'عميل';
   }
 
   void _onItemTapped(int index) {
@@ -90,6 +90,9 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
   @override
   Widget build(BuildContext context) {
     final UserModel? user = Provider.of<AuthProvider>(context).user;
+    // --- بداية التعديل 2: الوصول إلى ThemeProvider ---
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    // --- نهاية التعديل 2 ---
 
     if (user == null) {
       return const Scaffold(
@@ -106,20 +109,20 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     }
 
     return Scaffold(
-      // --- بداية التعديل 2: استخدام Stack لوضع الخلفية تحت المحتوى ---
       body: Stack(
         children: [
-          // الطبقة السفلية: الخلفية المزخرفة
-          const DecorativeBackground(),
+          // --- بداية التعديل 3: جعل الخلفية مشروطة ---
+          // لن تظهر الخلفية إلا إذا كان الخيار مفعلاً في الإعدادات
+          if (themeProvider.showBackgroundPattern)
+            const DecorativeBackground(),
+          // --- نهاية التعديل 3 ---
 
-          // الطبقة العلوية: المحتوى الرئيسي للشاشات
           IndexedStack(
             index: _selectedIndex,
             children: screens,
           ),
         ],
       ),
-      // --- نهاية التعديل 2 ---
       bottomNavigationBar: BottomNavigationBar(
         items: navItems,
         currentIndex: _selectedIndex,
