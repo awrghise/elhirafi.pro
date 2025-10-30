@@ -23,7 +23,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
 
-  // --- بداية التعديل 1: تحسين دالة اختيار المدن ---
   void _showCitySelectionDialog(UserModel user) {
     if (user.country.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +119,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveSubscribedCities(UserModel user, List<String> newCities) async {
     setState(() { _isLoading = true; });
     try {
-      // لا نستخدم UserProvider هنا بل AuthProvider لتحديث البيانات مباشرة
       await Provider.of<AuthProvider>(context, listen: false)
           .updateUserProfileWithImage(userId: user.id, data: {'subscribedCities': newCities});
       if (mounted) {
@@ -140,12 +138,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-  // --- نهاية التعديل 1 ---
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    // --- بداية التعديل 2: استخدام Consumer للوصول الآمن للمستخدم ---
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.user;
@@ -165,7 +161,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- بداية التعديل 3: فصل قائمة الإعدادات في دالة منفصلة ---
   Widget _buildSettingsList(BuildContext context, ThemeProvider themeProvider, AuthProvider authProvider, UserModel user) {
     return ListView(
       padding: const EdgeInsets.all(8.0),
@@ -195,6 +190,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
           secondary: const Icon(Icons.dark_mode_outlined),
         ),
+        // --- بداية التعديل: إضافة مفتاح التحكم بالخلفية ---
+        SwitchListTile(
+          title: const Text('إظهار الخلفية المزخرفة'),
+          value: themeProvider.showBackgroundPattern,
+          onChanged: (value) {
+            themeProvider.toggleBackgroundPattern(value);
+          },
+          secondary: const Icon(Icons.pattern_outlined),
+        ),
+        // --- نهاية التعديل ---
         _buildSettingsTile(
           icon: Icons.share_outlined,
           title: 'مشاركة التطبيق',
@@ -243,7 +248,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
           onTap: () async {
             await authProvider.signOut();
-            // AuthWrapper سيتولى إعادة التوجيه
           },
         ),
       ],
@@ -273,5 +277,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: onTap,
     );
   }
-  // --- نهاية التعديل 3 ---
 }
