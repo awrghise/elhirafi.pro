@@ -89,11 +89,8 @@ class AuthProvider with ChangeNotifier {
 
       await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
       
-      // --- بداية التعديل ---
-      // تحديث الحالة المحلية فوراً بعد إنشاء المستخدم بنجاح
       _user = newUser;
       notifyListeners();
-      // --- نهاية التعديل ---
       
     } catch (e) {
       rethrow;
@@ -162,20 +159,26 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
+  // --- بداية التعديل ---
   Future<void> updateUserProfileWithImage({
     required String userId,
     required Map<String, dynamic> data,
-    File? newImage,
+    File? newImage, // استقبال ملف الصورة الجديد
   }) async {
     _setLoading(true);
     try {
+      // التحقق مما إذا كانت هناك صورة جديدة لرفعها
       if (newImage != null) {
+        // رفع الصورة والحصول على الرابط الجديد
         final imageUrl = await _uploadProfileImage(userId, newImage);
+        // فقط إذا نجح الرفع، أضف الرابط إلى البيانات المُراد تحديثها
         if (imageUrl.isNotEmpty) {
           data['profileImageUrl'] = imageUrl;
         }
       }
+      // تحديث بيانات المستخدم في Firestore
       await _firestore.collection('users').doc(userId).update(data);
+      // إعادة جلب بيانات المستخدم المحدثة لعرضها في التطبيق
       await _fetchUser(userId);
       notifyListeners();
     } catch (e) {
@@ -185,6 +188,7 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
     }
   }
+  // --- نهاية التعديل ---
 
   Future<void> updateUserType(String newUserType) async {
     if (_user == null) return;
