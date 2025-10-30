@@ -26,23 +26,30 @@ class HomeScreen extends StatelessWidget {
       );
     }
 
+    // --- بداية التعديل ---
     return Scaffold(
       appBar: AppBar(
         title: Text('مرحباً ${user.name}'),
         backgroundColor: AppColors.primaryColor,
-        automaticallyImplyLeading: false,
+        // automaticallyImplyLeading: false, // تم إزالة هذا السطر لتحسين التنقل
         actions: [
+          // أيقونة مشاركة التطبيق
           IconButton(
             icon: const Icon(Icons.share),
+            tooltip: 'مشاركة التطبيق',
             onPressed: () {
+              // وظيفة مشاركة رابط التطبيق
               Share.share(
                 'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
               );
             },
           ),
+          // أيقونة الإعدادات
           IconButton(
             icon: const Icon(Icons.settings),
+            tooltip: 'الإعدادات',
             onPressed: () {
+              // وظيفة الانتقال إلى شاشة الإعدادات
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -60,6 +67,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
     );
+    // --- نهاية التعديل ---
   }
 
   Widget _buildDashboard(BuildContext context, UserModel user) {
