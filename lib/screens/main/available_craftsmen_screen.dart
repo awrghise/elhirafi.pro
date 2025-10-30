@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../models/user_model.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/chat_provider.dart';
-import '../../models/profession_model.dart';
+import '../../providers/craftsmen_provider.dart';
 import '../../data/cities_data.dart';
-import '../chat/chat_detail_screen.dart';
+import '../../widgets/custom_button.dart';
+import 'package:share_plus/share_plus.dart';
+import 'settings_screen.dart'; // استيراد شاشة الإعدادات
 
 class AvailableCraftsmenScreen extends StatefulWidget {
   const AvailableCraftsmenScreen({super.key});
@@ -19,408 +17,197 @@ class AvailableCraftsmenScreen extends StatefulWidget {
 }
 
 class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final ScrollController _scrollController = ScrollController();
-  
-  List<UserModel> _craftsmen = [];
-  DocumentSnapshot? _lastDocument;
-  bool _isLoading = false;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  final int _pageSize = 15;
-
-  String? _selectedProfessionKey;
+  String? _selectedProfession;
   String? _selectedCity;
-
-  final ProfessionsData _professionsData = ProfessionsData();
+  String? _selectedRegion;
 
   @override
   void initState() {
     super.initState();
-    _loadCraftsmen(isInitial: true);
-    _scrollController.addListener(_onScroll);
+    // استدعاء لجلب الحرفيين عند فتح الشاشة لأول مرة بدون فلترة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CraftsmenProvider>(context, listen: false).fetchCraftsmen();
+    });
   }
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
-      if (!_isLoadingMore && _hasMore) {
-        _loadCraftsmen();
-      }
-    }
-  }
-
-  Future<void> _loadCraftsmen({bool isInitial = false}) async {
-    if (isInitial) {
-      setState(() {
-        _isLoading = true;
-        _craftsmen.clear();
-        _lastDocument = null;
-        _hasMore = true;
-      });
-    } else {
-      if (_isLoadingMore || !_hasMore) return;
-      setState(() => _isLoadingMore = true);
-    }
-
-    try {
-      Query query = _firestore
-          .collection('users')
-          .where('userType', isEqualTo: AppStrings.craftsman)
-          .where('isAvailable', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .limit(_pageSize);
-
-      if (_selectedProfessionKey != null) {
-        query = query.where('profession', isEqualTo: _selectedProfessionKey);
-      }
-
-      if (_selectedCity != null) {
-        query = query.where('subscribedCities', arrayContains: _selectedCity);
-      }
-
-      if (_lastDocument != null && !isInitial) {
-        query = query.startAfterDocument(_lastDocument!);
-      }
-
-      final snapshot = await query.get();
-
-      if (snapshot.docs.isEmpty) {
-        setState(() => _hasMore = false);
-      } else {
-        final newCraftsmen = snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
-        setState(() {
-          _craftsmen.addAll(newCraftsmen);
-          _lastDocument = snapshot.docs.last;
-          _hasMore = newCraftsmen.length == _pageSize;
-        });
-      }
-    } catch (e) {
-      print('Error loading craftsmen: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في تحميل الحرفيين: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
-    }
-  }
-
-  void _resetAndReload() {
-    _loadCraftsmen(isInitial: true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // --- بداية التعديل 1: جلب بيانات المستخدم ودولته ---
-    final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
-    // تحديد الدولة الافتراضية في حال لم تكن مسجلة
-    final userCountry = currentUser?.country.isNotEmpty ?? false ? currentUser!.country : 'المغرب';
-    
-    // جلب كل المدن للدولة المحددة
-    final allCitiesForCountry = CitiesData.getRegions(userCountry)
-        .expand((region) => CitiesData.getCities(userCountry, region))
-        .toSet()
-        .toList()
-      ..sort();
-    // --- نهاية التعديل 1 ---
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.availableCraftsmen),
-        backgroundColor: AppColors.primaryColor,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetAndReload,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // تمرير قائمة المدن الصحيحة إلى الويدجت
-          _buildFilterSection(allCitiesForCountry),
-          Expanded(
-            child: _buildCraftsmenList(currentUser),
-          ),
-        ],
-      ),
+  void _applyFilters() {
+    Provider.of<CraftsmenProvider>(context, listen: false).fetchCraftsmen(
+      profession: _selectedProfession,
+      city: _selectedCity,
     );
   }
 
-  Widget _buildFilterSection(List<String> availableCities) {
+  void _resetFilters() {
+    setState(() {
+      _selectedProfession = null;
+      _selectedCity = null;
+      _selectedRegion = null;
+    });
+    Provider.of<CraftsmenProvider>(context, listen: false).fetchCraftsmen();
+  }
+
+  // --- بداية التعديل 1: تحسين تصميم القائمة المنسدلة ---
+  Widget _buildDropdown({
+    required String hint,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: Theme.of(context).cardColor,
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              value: _selectedProfessionKey,
-              // --- بداية التعديل 2: تصغير حجم الخط ---
-              style: const TextStyle(fontSize: 14, color: Colors.black),
-              decoration: InputDecoration(
-                labelText: 'المهنة',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('جميع المهن')),
-                ..._professionsData.getAllProfessions().map((profession) {
-                  return DropdownMenuItem(
-                    value: profession.conceptKey,
-                    child: Text(profession.getNameByDialect('AR')),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() => _selectedProfessionKey = value);
-                _resetAndReload();
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              value: _selectedCity,
-              // --- بداية التعديل 3: تصغير حجم الخط ---
-              style: const TextStyle(fontSize: 14, color: Colors.black),
-              decoration: InputDecoration(
-                labelText: 'المدينة',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              // استخدام قائمة المدن التي تم تمريرها
-              items: [
-                const DropdownMenuItem(value: null, child: Text('جميع المدن')),
-                ...availableCities.map((city) {
-                  return DropdownMenuItem(
-                    value: city,
-                    child: Text(city),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() => _selectedCity = value);
-                _resetAndReload();
-              },
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(8.0),
       ),
-    );
-  }
-
-  Widget _buildCraftsmenList(UserModel? currentUser) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_craftsmen.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () async => _resetAndReload(),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_search, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'لا يوجد حرفيون متاحون بالفلتر الحالي',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          hint: Text(hint, style: const TextStyle(fontSize: 14)), // تصغير حجم الخط
+          value: value,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Center( // توسيط النص
+                child: Text(
+                  item,
+                  style: const TextStyle(fontSize: 14), // تصغير حجم الخط
+                  textAlign: TextAlign.center,
                 ),
               ),
             );
-          },
+          }).toList(),
+          onChanged: onChanged,
         ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async => _resetAndReload(),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        itemCount: _craftsmen.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _craftsmen.length) {
-            return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-          }
-          final craftsman = _craftsmen[index];
-          if (currentUser != null && craftsman.id == currentUser.id) {
-            return const SizedBox.shrink();
-          }
-          return _buildCraftsmanCard(craftsman, currentUser);
-        },
       ),
     );
   }
+  // --- نهاية التعديل 1 ---
 
-  Widget _buildCraftsmanCard(UserModel craftsman, UserModel? currentUser) {
-    final professionName = _professionsData.getLocalizedProfessionName(craftsman.profession, 'AR');
+  @override
+  Widget build(BuildContext context) {
+    final craftsmenProvider = Provider.of<CraftsmenProvider>(context);
+    final List<String> professions = CitiesData.getProfessions();
+    final List<String> regions = CitiesData.getRegions('المغرب'); // مثال، يجب أن تكون ديناميكية
+    final List<String> cities = _selectedRegion != null ? CitiesData.getCities('المغرب', _selectedRegion!) : [];
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
+    return Scaffold(
+      // --- بداية التعديل 2: إضافة AppBar مع أيقونات ---
+      appBar: AppBar(
+        title: const Text(AppStrings.craftsmenLabel),
+        backgroundColor: AppColors.primaryColor,
+        automaticallyImplyLeading: false, // لإخفاء سهم الرجوع
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              Share.share('ابحث عن أفضل الحرفيين في تطبيق الصانع الحرفي! [رابط التطبيق]');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      // --- نهاية التعديل 2 ---
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primaryColor.withOpacity(0.1),
-                  backgroundImage: craftsman.profileImageUrl.isNotEmpty
-                      ? NetworkImage(craftsman.profileImageUrl)
-                      : null,
-                  child: craftsman.profileImageUrl.isEmpty
-                      ? Text(
-                          craftsman.name.isNotEmpty ? craftsman.name[0].toUpperCase() : 'U',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryColor),
-                        )
-                      : null,
+                _buildDropdown(
+                  hint: 'اختر الحرفة',
+                  value: _selectedProfession,
+                  items: professions,
+                  onChanged: (newValue) {
+                    setState(() { _selectedProfession = newValue; });
+                  },
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        craftsman.name,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDropdown(
+                        hint: 'اختر الجهة',
+                        value: _selectedRegion,
+                        items: regions,
+                        onChanged: (newValue) {
+                          setState(() {
+                            _selectedRegion = newValue;
+                            _selectedCity = null; // إعادة تعيين المدينة عند تغيير الجهة
+                          });
+                        },
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        professionName,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildDropdown(
+                        hint: 'اختر المدينة',
+                        value: _selectedCity,
+                        items: cities,
+                        onChanged: (newValue) {
+                          setState(() { _selectedCity = newValue; });
+                        },
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              craftsman.primaryWorkCity,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomButton(
+                        text: 'بحث',
+                        onPressed: _applyFilters,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: AppColors.primaryColor),
+                      onPressed: _resetFilters,
+                    )
+                  ],
+                )
               ],
             ),
-            const SizedBox(height: 16),
-            if (currentUser != null && currentUser.userType == AppStrings.client)
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _contactCraftsman(craftsman, currentUser),
-                      icon: const Icon(Icons.chat_outlined, size: 18),
-                      label: const Text('محادثة'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryColor,
-                        side: const BorderSide(color: AppColors.primaryColor),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          Expanded(
+            child: craftsmenProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : craftsmenProvider.craftsmen.isEmpty
+                    ? const Center(child: Text('لا يوجد حرفيون متاحون بهذه المواصفات.'))
+                    : ListView.builder(
+                        itemCount: craftsmenProvider.craftsmen.length,
+                        itemBuilder: (context, index) {
+                          UserModel craftsman = craftsmenProvider.craftsmen[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: craftsman.profileImageUrl.isNotEmpty
+                                    ? NetworkImage(craftsman.profileImageUrl)
+                                    : const AssetImage('assets/images/placeholder_icon.png') as ImageProvider,
+                              ),
+                              title: Text(craftsman.name),
+                              subtitle: Text('${craftsman.profession}\n${craftsman.subscribedCities.join(', ')}'),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () {
+                                // TODO: الانتقال إلى صفحة تفاصيل الحرفي
+                              },
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _callCraftsman(craftsman),
-                      icon: const Icon(Icons.phone_outlined, size: 18),
-                      label: const Text('اتصال'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
-
-  void _contactCraftsman(UserModel craftsman, UserModel currentUser) async {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-
-    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
-
-    try {
-      final chatId = await chatProvider.getOrCreateChat(
-        user1Id: currentUser.id,
-        user1Name: currentUser.name,
-        user1Phone: currentUser.phoneNumber,
-        user2Id: craftsman.id,
-        user2Name: craftsman.name,
-        user2Phone: craftsman.phoneNumber,
-      );
-
-      if(mounted) Navigator.pop(context);
-
-      if(mounted){
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatDetailScreen(
-              chatId: chatId,
-              otherUserId: craftsman.id,
-              otherUserName: craftsman.name,
-              otherUserPhone: craftsman.phoneNumber,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if(mounted) Navigator.pop(context);
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل بدء المحادثة: $e')));
-    }
-  }
-
-  void _callCraftsman(UserModel craftsman) async {
-    if (craftsman.phoneNumber.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('رقم الهاتف غير متوفر')));
-      return;
-    }
-    final url = Uri.parse('tel:${craftsman.phoneNumber}');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لا يمكن إجراء الاتصال بالرقم ${craftsman.phoneNumber}')));
-    }
   }
 }
