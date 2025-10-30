@@ -88,8 +88,12 @@ class AuthProvider with ChangeNotifier {
       );
 
       await _firestore.collection('users').doc(newUser.id).set(newUser.toFirestore());
+      
+      // --- بداية التعديل ---
+      // تحديث الحالة المحلية فوراً بعد إنشاء المستخدم بنجاح
       _user = newUser;
       notifyListeners();
+      // --- نهاية التعديل ---
       
     } catch (e) {
       rethrow;
