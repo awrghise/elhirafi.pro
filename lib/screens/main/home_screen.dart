@@ -10,6 +10,9 @@ import 'package:alsana_alharfiyin/models/product_model.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:alsana_alharfiyin/screens/supplier/public_store_screen.dart';
 import 'package:alsana_alharfiyin/screens/main/settings_screen.dart';
+// --- بداية الإضافة ---
+import 'package:alsana_alharfiyin/providers/profession_provider.dart';
+// --- نهاية الإضافة ---
 
 // --- HomeScreen Widget ---
 class HomeScreen extends StatelessWidget {
@@ -26,30 +29,24 @@ class HomeScreen extends StatelessWidget {
       );
     }
 
-    // --- بداية التعديل ---
     return Scaffold(
       appBar: AppBar(
         title: Text('مرحباً ${user.name}'),
         backgroundColor: AppColors.primaryColor,
-        // automaticallyImplyLeading: false, // تم إزالة هذا السطر لتحسين التنقل
         actions: [
-          // أيقونة مشاركة التطبيق
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: 'مشاركة التطبيق',
             onPressed: () {
-              // وظيفة مشاركة رابط التطبيق
               Share.share(
                 'تطبيق الصانع الحرفي - منصة ربط الحرفيين بأصحاب المشاريع\nhttps://play.google.com/store/apps/details?id=com.elsane3.app',
               );
             },
           ),
-          // أيقونة الإعدادات
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'الإعدادات',
             onPressed: () {
-              // وظيفة الانتقال إلى شاشة الإعدادات
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -67,7 +64,6 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
     );
-    // --- نهاية التعديل ---
   }
 
   Widget _buildDashboard(BuildContext context, UserModel user) {
@@ -110,7 +106,7 @@ class _ClientDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Padding(
-        padding: EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -133,6 +129,12 @@ class _CraftsmanDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- بداية التعديل ---
+    // جلب ProfessionProvider لترجمة اسم المهنة
+    final professionProvider = Provider.of<ProfessionProvider>(context, listen: false);
+    final professionName = professionProvider.getLocalizedProfessionName(user.profession, 'AR');
+    // --- نهاية التعديل ---
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -143,7 +145,10 @@ class _CraftsmanDashboard extends StatelessWidget {
             const SizedBox(height: 24),
             const Text('لوحة تحكم الحرفي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            Text('المهنة: ${user.profession}', style: const TextStyle(fontSize: 16)),
+            // --- بداية التعديل ---
+            // عرض اسم المهنة المترجم
+            Text('المهنة: $professionName', style: const TextStyle(fontSize: 16)),
+            // --- نهاية التعديل ---
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
