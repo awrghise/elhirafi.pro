@@ -4,12 +4,12 @@ import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
 
-// Import all the main screens
+// استيراد جميع الشاشات الرئيسية
 import 'available_craftsmen_screen.dart';
 import 'requests_screen.dart';
 import 'chats_screen.dart';
 import 'profile_screen.dart';
-import 'settings_screen.dart';
+import 'settings_screen.dart'; // لا يزال مطلوبًا للشاشات
 import 'stores_list_screen.dart';
 import '../supplier/store_management_screen.dart';
 
@@ -23,7 +23,7 @@ class MainScreenHolder extends StatefulWidget {
 class _MainScreenHolderState extends State<MainScreenHolder> {
   int _selectedIndex = 0;
 
-  // دالة مساعدة لتوحيد نوع المستخدم (التعامل مع القيم العربية والإنجليزية)
+  // دالة مساعدة لتوحيد نوع المستخدم
   String _normalizeUserType(String userType) {
     final normalized = userType.trim().toLowerCase();
     if (normalized == 'client' || normalized == 'عميل') {
@@ -33,59 +33,41 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     } else if (normalized == 'supplier' || normalized == 'مورد') {
       return AppStrings.supplier;
     }
-    return userType; // إرجاع القيمة الأصلية إذا لم تتطابق
+    return 'عميل'; // قيمة افتراضية آمنة
   }
 
   void _onItemTapped(int index) {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    if (user != null) {
-      final itemCount = _getNavItems(_normalizeUserType(user.userType)).length;
-      if (index < itemCount) {
-        setState(() {
-          _selectedIndex = index;
-        });
-      } else {
-        setState(() {
-          _selectedIndex = 0;
-        });
-      }
-    }
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
+  // --- بداية التعديل 1: توحيد وتبسيط شريط التنقل ---
   List<BottomNavigationBarItem> _getNavItems(String userType) {
-    if (userType == AppStrings.client) {
-      return const [
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: AppStrings.craftsmenLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.storefront), label: AppStrings.storeLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: AppStrings.requestsLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.chat), label: AppStrings.chatsLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: AppStrings.profileLabel),
-      ];
-    } else if (userType == AppStrings.craftsman) {
-      return const [
-        BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: AppStrings.requestsLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.storefront), label: AppStrings.storeLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.chat), label: AppStrings.chatsLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: AppStrings.profileLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: AppStrings.settingsLabel),
-      ];
-    } else if (userType == AppStrings.supplier) {
-      return const [
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: AppStrings.storeLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.chat), label: AppStrings.chatsLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: AppStrings.profileLabel),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: AppStrings.settingsLabel),
-      ];
-    }
-    return [const BottomNavigationBarItem(icon: Icon(Icons.error), label: 'خطأ')];
-  }
+    // قائمة أساسية مشتركة
+    List<BottomNavigationBarItem> items = [
+      // العنصر الأول يختلف حسب نوع المستخدم
+      if (userType == AppStrings.client)
+        const BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: AppStrings.craftsmenLabel)
+      else // للحرفي والمورد
+        const BottomNavigationBarItem(icon: Icon(Icons.list_alt_outlined), activeIcon: Icon(Icons.list_alt), label: AppStrings.requestsLabel),
+      
+      // عناصر مشتركة
+      const BottomNavigationBarItem(icon: Icon(Icons.storefront_outlined), activeIcon: Icon(Icons.storefront), label: AppStrings.storeLabel),
+      const BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: AppStrings.chatsLabel),
+      const BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: AppStrings.profileLabel),
+    ];
 
+    return items;
+  }
+  // --- نهاية التعديل 1 ---
+
+  // --- بداية التعديل 2: تعديل الشاشات لتتوافق مع الأيقونات الجديدة ---
   List<Widget> _getScreens(String userType) {
     if (userType == AppStrings.client) {
       return const [
         AvailableCraftsmenScreen(),
         StoresListScreen(),
-        RequestsScreen(),
         ChatsScreen(),
         ProfileScreen(),
       ];
@@ -95,38 +77,21 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
         StoresListScreen(),
         ChatsScreen(),
         ProfileScreen(),
-        SettingsScreen(),
       ];
     } else if (userType == AppStrings.supplier) {
       return const [
+        RequestsScreen(), // الموردون قد يحتاجون لرؤية الطلبات أيضًا
         StoreManagementScreen(),
         ChatsScreen(),
         ProfileScreen(),
-        SettingsScreen(),
       ];
     }
+    // شاشة الخطأ في حالة نوع مستخدم غير معروف
     return [
-      Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              'نوع مستخدم غير معروف: $userType',
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'الرجاء التواصل مع الدعم الفني',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
-      )
+      Center(child: Text('نوع مستخدم غير معروف: $userType'))
     ];
   }
+  // --- نهاية التعديل 2 ---
 
   @override
   Widget build(BuildContext context) {
@@ -139,24 +104,28 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     }
     
     final normalizedUserType = _normalizeUserType(user.userType);
-    final itemCount = _getNavItems(normalizedUserType).length;
-    if (_selectedIndex >= itemCount) {
+    final navItems = _getNavItems(normalizedUserType);
+    final screens = _getScreens(normalizedUserType);
+
+    // التأكد من أن الفهرس المحدد لا يتجاوز عدد العناصر المتاحة
+    if (_selectedIndex >= navItems.length) {
       _selectedIndex = 0;
     }
 
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _getScreens(normalizedUserType),
+        children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: _getNavItems(normalizedUserType),
+        items: navItems,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Theme.of(context).primaryColor,
         unselectedItemColor: Colors.grey,
         backgroundColor: Theme.of(context).cardColor,
+        showUnselectedLabels: true, // إظهار العناوين دائمًا
       ),
     );
   }
