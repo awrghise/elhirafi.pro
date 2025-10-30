@@ -5,6 +5,9 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../auth/register_screen.dart';
 import '../../models/user_model.dart';
+// --- بداية الإضافة 1 ---
+import '../../providers/profession_provider.dart';
+// --- نهاية الإضافة 1 ---
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -13,6 +16,11 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final UserModel? user = authProvider.user;
+
+    // --- بداية الإضافة 2 ---
+    // جلب ProfessionProvider للوصول إلى بيانات المهن
+    final professionProvider = Provider.of<ProfessionProvider>(context, listen: false);
+    // --- نهاية الإضافة 2 ---
 
     if (user == null) {
       return const Scaffold(
@@ -65,13 +73,16 @@ class ProfileScreen extends StatelessWidget {
             _buildInfoTile(Icons.phone, 'رقم الهاتف', user.phoneNumber),
             _buildInfoTile(Icons.person_outline, 'نوع الحساب', user.userType),
             if (user.userType == AppStrings.craftsman) ...[
-              // --- بداية التعديل 1: استخدام الحقل الصحيح ---
-              _buildInfoTile(Icons.work, 'المهنة', user.profession),
-              // --- نهاية التعديل 1 ---
+              // --- بداية التعديل ---
+              // استخدام الـ provider لترجمة اسم المهنة
+              _buildInfoTile(
+                Icons.work,
+                'المهنة',
+                professionProvider.getLocalizedProfessionName(user.profession, 'AR'),
+              ),
+              // --- نهاية التعديل ---
               _buildInfoTile(Icons.location_city, 'مدينة العمل الأساسية', user.primaryWorkCity),
-              // --- بداية التعديل 2: استخدام الحقل الصحيح ---
               _buildInfoTile(Icons.notifications_active, 'مدن التنبيهات', user.subscribedCities.join(', ')),
-              // --- نهاية التعديل 2 ---
             ],
             const Divider(),
             const SizedBox(height: 20),
