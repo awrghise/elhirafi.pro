@@ -35,10 +35,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _userType;
   String? _selectedProfessionKey;
-  String? _selectedCountry;
-  String? _selectedPrimaryCity;
   File? _image;
   String? _networkImageUrl;
+
+  // --- بداية التعديل 1: إضافة متغيرات الحالة الجديدة ---
+  String? _selectedCountry;
+  String? _selectedRegion;
+  String? _selectedProvince;
+  String? _selectedPrimaryCity;
+  // --- نهاية التعديل 1 ---
 
   final ImagePicker _picker = ImagePicker();
   final ProfessionsData _professionsData = ProfessionsData();
@@ -53,9 +58,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _phoneController.text = user.phoneNumber;
       _userType = user.userType;
       _selectedProfessionKey = user.profession;
-      _selectedCountry = user.country;
-      _selectedPrimaryCity = user.primaryWorkCity;
+      _selectedCountry = user.country.isNotEmpty ? user.country : null;
+      _selectedPrimaryCity = user.primaryWorkCity.isNotEmpty ? user.primaryWorkCity : null;
       _networkImageUrl = user.profileImageUrl;
+      // ملاحظة: لا يمكننا إعادة بناء الجهة والإقليم بسهولة من المدينة فقط، لذا سنتركها فارغة عند التعديل
+      // وسيتعين على المستخدم إعادة تحديدها إذا أراد تغيير المدينة.
     } else {
       _userType = AppStrings.client;
     }
@@ -87,7 +94,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_userType == AppStrings.craftsman && (_selectedProfessionKey == null || _selectedPrimaryCity == null || _selectedCountry == null)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي (بما في ذلك المدينة الأساسية)')),
+          const SnackBar(content: Text('الرجاء إكمال جميع الحقول المطلوبة للحرفي (بما في ذلك المدينة)')),
         );
       }
       return;
@@ -197,11 +204,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       _buildUserTypeSelector(),
                     const SizedBox(height: 16),
                     if (_userType == AppStrings.craftsman) ...[
+                      _buildProfessionDropdown(),
+                      const SizedBox(height: 20),
+                      Text("منطقة العمل", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                      const Divider(),
                       _buildCountryDropdown(),
                       const SizedBox(height: 16),
-                      _buildProfessionDropdown(),
+                      _buildRegionDropdown(), // القائمة الجديدة للجهات
                       const SizedBox(height: 16),
-                      _buildPrimaryCityDropdown(),
+                      _buildProvinceDropdown(), // القائمة الجديدة للأقاليم
+                      const SizedBox(height: 16),
+                      _buildCityDropdown(), // القائمة النهائية للمدن
                     ],
                     const SizedBox(height: 24),
                     CustomButton(
@@ -212,6 +225,126 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  // --- بداية التعديل 2: إضافة وتعديل دوال بناء القوائم المنسدلة ---
+
+  // دالة بناء قائمة منسدلة عامة لتقليل التكرار
+  Widget _buildDropdown({
+    required String hint,
+    required String? value,
+    required List<String> items,
+    required void Function(String?)? onChanged,
+    bool isEnabled = true,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey),
+        color: isEnabled ? Colors.transparent : Colors.grey[200],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          hint: Text(hint),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(item, style: const TextStyle(fontSize: 14)),
+            );
+          }).toList(),
+          onChanged: isEnabled ? onChanged : null,
+          disabledHint: Text(hint, style: TextStyle(color: Colors.grey[500])),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCountryDropdown() {
+    return _buildDropdown(
+      hint: 'اختر الدولة',
+      value: _selectedCountry,
+      items: CitiesData.getCountries(),
+      onChanged: (newValue) {
+        setState(() {
+          _selectedCountry = newValue;
+          _selectedRegion = null;
+          _selectedProvince = null;
+          _selectedPrimaryCity = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildRegionDropdown() {
+    final regions = _selectedCountry != null ? CitiesData.getRegions(_selectedCountry!) : <String>[];
+    return _buildDropdown(
+      hint: 'اختر الجهة / الولاية',
+      value: _selectedRegion,
+      items: regions,
+      isEnabled: _selectedCountry != null,
+      onChanged: (newValue) {
+        setState(() {
+          _selectedRegion = newValue;
+          _selectedProvince = null;
+          _selectedPrimaryCity = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildProvinceDropdown() {
+    final provinces = (_selectedCountry != null && _selectedRegion != null)
+        ? CitiesData.getCities(_selectedCountry!, _selectedRegion!)
+        : <String>[];
+    return _buildDropdown(
+      hint: 'اختر الإقليم / العمالة',
+      value: _selectedProvince,
+      items: provinces,
+      isEnabled: _selectedRegion != null,
+      onChanged: (newValue) {
+        setState(() {
+          _selectedProvince = newValue;
+          _selectedPrimaryCity = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildCityDropdown() {
+    final cities = (_selectedCountry != null && _selectedRegion != null && _selectedProvince != null)
+        ? CitiesData.getDistricts(_selectedCountry!, _selectedRegion!, _selectedProvince!)
+        : <String>[];
+    return _buildDropdown(
+      hint: 'اختر المدينة',
+      value: _selectedPrimaryCity,
+      items: cities,
+      isEnabled: _selectedProvince != null,
+      onChanged: (newValue) {
+        setState(() {
+          _selectedPrimaryCity = newValue;
+        });
+      },
+    );
+  }
+  
+  // --- نهاية التعديل 2 ---
+
+  Widget _buildProfessionDropdown() {
+    return _buildDropdown(
+      hint: AppStrings.selectProfession,
+      value: _selectedProfessionKey,
+      items: _professionsData.getAllProfessions().map((p) => p.getNameByDialect('AR')).toList(),
+      onChanged: (newValue) {
+        // البحث عن المفتاح المقابل للاسم المختار
+        final selectedProfession = _professionsData.findProfessionByName(newValue ?? '', 'AR');
+        setState(() {
+          _selectedProfessionKey = selectedProfession?.conceptKey;
+        });
+      },
     );
   }
 
@@ -301,104 +434,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-
-  Widget _buildCountryDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCountry,
-          isExpanded: true,
-          hint: const Text(AppStrings.selectCountry),
-          items: CitiesData.getCountries().map((String country) {
-            return DropdownMenuItem<String>(
-              value: country,
-              child: Text(country, style: const TextStyle(fontSize: 14)),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            setState(() {
-              _selectedCountry = newValue;
-              _selectedPrimaryCity = null; // إعادة تعيين المدينة عند تغيير الدولة
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfessionDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedProfessionKey,
-          isExpanded: true,
-          hint: const Text(AppStrings.selectProfession),
-          items: _professionsData.getAllProfessions().map((profession) {
-            return DropdownMenuItem<String>(
-              value: profession.conceptKey,
-              child: Text(profession.getNameByDialect('AR'), style: const TextStyle(fontSize: 14)),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            setState(() {
-              _selectedProfessionKey = newValue;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  // --- بداية التعديل ---
-  Widget _buildPrimaryCityDropdown() {
-    // جلب قائمة المدن الكاملة للدولة المختارة
-    final List<String> allCitiesForCountry = _selectedCountry != null
-        ? CitiesData.getRegions(_selectedCountry!)
-            .expand((region) => CitiesData.getCities(_selectedCountry!, region))
-            .toSet() // استخدام Set لإزالة التكرارات
-            .toList()
-          ..sort() // ترتيب القائمة أبجديًا
-        : [];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey),
-        // تعطيل الحقل بصريًا إذا لم يتم اختيار الدولة
-        color: _selectedCountry == null ? Colors.grey[200] : Colors.transparent,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedPrimaryCity,
-          isExpanded: true,
-          hint: const Text('اختر مدينة العمل الأساسية'),
-          // استخدام قائمة المدن الكاملة والمُرتبة
-          items: allCitiesForCountry.map((String city) {
-            return DropdownMenuItem<String>(
-              value: city,
-              child: Text(city, style: const TextStyle(fontSize: 14)),
-            );
-          }).toList(),
-          // تعطيل القائمة إذا لم يتم اختيار الدولة
-          onChanged: _selectedCountry == null ? null : (newValue) {
-            setState(() {
-              _selectedPrimaryCity = newValue;
-            });
-          },
-        ),
-      ),
-    );
-  }
-  // --- نهاية التعديل ---
 }
