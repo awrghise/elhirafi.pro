@@ -7,7 +7,7 @@ import '../../constants/app_strings.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
-import '../../models/profession_model.dart'; // <-- تم تغيير مسار الاستيراد هنا
+import '../../models/profession_model.dart';
 import '../../data/cities_data.dart';
 import '../chat/chat_detail_screen.dart';
 
@@ -124,14 +124,18 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // --- بداية التعديل 1: جلب بيانات المستخدم ودولته ---
     final currentUser = Provider.of<AuthProvider>(context, listen: false).user;
-    final userCountry = currentUser?.country ?? 'المغرب';
+    // تحديد الدولة الافتراضية في حال لم تكن مسجلة
+    final userCountry = currentUser?.country.isNotEmpty ?? false ? currentUser!.country : 'المغرب';
     
+    // جلب كل المدن للدولة المحددة
     final allCitiesForCountry = CitiesData.getRegions(userCountry)
         .expand((region) => CitiesData.getCities(userCountry, region))
         .toSet()
         .toList()
       ..sort();
+    // --- نهاية التعديل 1 ---
 
     return Scaffold(
       appBar: AppBar(
@@ -147,6 +151,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
       ),
       body: Column(
         children: [
+          // تمرير قائمة المدن الصحيحة إلى الويدجت
           _buildFilterSection(allCitiesForCountry),
           Expanded(
             child: _buildCraftsmenList(currentUser),
@@ -165,6 +170,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _selectedProfessionKey,
+              // --- بداية التعديل 2: تصغير حجم الخط ---
+              style: const TextStyle(fontSize: 14, color: Colors.black),
               decoration: InputDecoration(
                 labelText: 'المهنة',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -189,11 +196,14 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
           Expanded(
             child: DropdownButtonFormField<String>(
               value: _selectedCity,
+              // --- بداية التعديل 3: تصغير حجم الخط ---
+              style: const TextStyle(fontSize: 14, color: Colors.black),
               decoration: InputDecoration(
                 labelText: 'المدينة',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
+              // استخدام قائمة المدن التي تم تمريرها
               items: [
                 const DropdownMenuItem(value: null, child: Text('جميع المدن')),
                 ...availableCities.map((city) {
