@@ -1,72 +1,41 @@
-// lib/providers/theme_provider.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider with ChangeNotifier {
-  static const String _themePrefKey = 'theme_preference';
-  ThemeMode _themeMode;
+  bool _isDarkMode = false;
+  // --- بداية التعديل 1: إضافة متغيرات للتحكم بالخلفية ---
+  bool _showBackgroundPattern = true; 
 
-  ThemeProvider() : _themeMode = ThemeMode.system {
-    _loadThemePreference();
+  bool get isDarkMode => _isDarkMode;
+  bool get showBackgroundPattern => _showBackgroundPattern;
+  // --- نهاية التعديل 1 ---
+
+  ThemeProvider() {
+    _loadTheme();
   }
 
-  ThemeMode get themeMode => _themeMode;
-
-  bool get isDarkMode {
-    if (_themeMode == ThemeMode.system) {
-      return SchedulerBinding.instance.window.platformBrightness == Brightness.dark;
-    }
-    return _themeMode == ThemeMode.dark;
-  }
-
-  void toggleTheme(bool isOn) {
-    _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
-    _saveThemePreference();
+  void _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    // --- بداية التعديل 2: تحميل إعداد الخلفية المحفوظ ---
+    _showBackgroundPattern = prefs.getBool('showBackgroundPattern') ?? true;
+    // --- نهاية التعديل 2 ---
     notifyListeners();
   }
 
-  void _loadThemePreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeIndex = prefs.getInt(_themePrefKey) ?? 0; // 0 for system, 1 for light, 2 for dark
-    switch (themeIndex) {
-      case 1:
-        _themeMode = ThemeMode.light;
-        break;
-      case 2:
-        _themeMode = ThemeMode.dark;
-        break;
-      default:
-        _themeMode = ThemeMode.system;
-        break;
-    }
+  void toggleTheme(bool isOn) async {
+    _isDarkMode = isOn;
     notifyListeners();
-  }
-
-  void _saveThemePreference() async {
     final prefs = await SharedPreferences.getInstance();
-    int themeIndex;
-    switch (_themeMode) {
-      case ThemeMode.light:
-        themeIndex = 1;
-        break;
-      case ThemeMode.dark:
-        themeIndex = 2;
-        break;
-      default:
-        themeIndex = 0;
-        break;
-    }
-    await prefs.setInt(_themePrefKey, themeIndex);
+    prefs.setBool('isDarkMode', _isDarkMode);
   }
 
-  ThemeData getTheme() {
-    final bool useDarkMode = isDarkMode;
-    return ThemeData(
-      brightness: useDarkMode ? Brightness.dark : Brightness.light,
-      primarySwatch: Colors.teal,
-      // Add other theme properties here
-    );
+  // --- بداية التعديل 3: دالة جديدة لتغيير حالة الخلفية ---
+  void toggleBackgroundPattern(bool isOn) async {
+    _showBackgroundPattern = isOn;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('showBackgroundPattern', _showBackgroundPattern);
   }
+  // --- نهاية التعديل 3 ---
 }
