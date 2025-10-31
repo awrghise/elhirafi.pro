@@ -6,11 +6,9 @@ import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/request_provider.dart';
 import '../../models/request_model.dart';
+import '../../models/user_model.dart';
 import 'settings_screen.dart';
-
-// --- بداية التعديل 1: استيراد ويدجت إعلان البانر ---
 import '../../widgets/banner_ad_widget.dart';
-// --- نهاية التعديل 1 ---
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -26,7 +24,13 @@ class _RequestsScreenState extends State<RequestsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
       if (user != null) {
-        Provider.of<RequestProvider>(context, listen: false).fetchRequests(user.userType, user.uid);
+        // --- تصحيح: استخدام الدالة والخصائص الصحيحة ---
+        Provider.of<RequestProvider>(context, listen: false).fetchInitialRequests(
+          userType: user.userType,
+          userId: user.id,
+          professionName: user.profession,
+          primaryCity: user.primaryWorkCity,
+        );
       }
     });
   }
@@ -67,27 +71,25 @@ class _RequestsScreenState extends State<RequestsScreen> {
             unselectedLabelStyle: TextStyle(fontFamily: 'Cairo'),
           ),
         ),
-        // --- بداية التعديل 2: تغيير هيكل body لإضافة البانر ---
         body: Column(
           children: [
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildRequestsList(context, RequestStatus.pending),
-                  _buildRequestsList(context, RequestStatus.accepted),
+                  // --- تصحيح: تمرير الحالة كنص String ---
+                  _buildRequestsList(context, 'pending'),
+                  _buildRequestsList(context, 'accepted'),
                 ],
               ),
             ),
-            // العنصر الثاني: إعلان البانر الخاص بهذه الشاشة
             const BannerAdWidget(screenName: 'RequestsScreen'),
           ],
         ),
-        // --- نهاية التعديل 2 ---
       ),
     );
   }
 
-  Widget _buildRequestsList(BuildContext context, RequestStatus status) {
+  Widget _buildRequestsList(BuildContext context, String status) {
     final requestProvider = Provider.of<RequestProvider>(context);
     final user = Provider.of<AuthProvider>(context, listen: false).user;
 
@@ -95,12 +97,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final requests = requestProvider.requests
-        .where((req) => req.status == status)
-        .toList();
+    final requests = requestProvider.requests.where((req) => req.status == status).toList();
 
     if (requests.isEmpty) {
-      return Center(child: Text('لا توجد طلبات ${status == RequestStatus.pending ? 'جديدة' : 'مقبولة'} حاليًا.'));
+      // --- تصحيح: استخدام نص String للمقارنة ---
+      return Center(child: Text('لا توجد طلبات ${status == 'pending' ? 'جديدة' : 'مقبولة'} حاليًا.'));
     }
 
     return ListView.builder(
@@ -110,12 +111,17 @@ class _RequestsScreenState extends State<RequestsScreen> {
         return Card(
           margin: const EdgeInsets.all(8.0),
           child: ListTile(
-            title: Text(request.description),
-            subtitle: Text('الحالة: ${request.status.name}'),
-            trailing: (user?.userType == 'craftsman' && request.status == Request.pending)
+            // --- تصحيح: استخدام 'details' بدلاً من 'description' ---
+            title: Text(request.details ?? 'لا توجد تفاصيل'),
+            subtitle: Text('الحالة: ${request.status}'),
+            // --- تصحيح: استخدام نص String للمقارنة ---
+            trailing: (user?.userType == 'حرفي' && request.status == 'pending')
                 ? ElevatedButton(
                     onPressed: () {
-                      requestProvider.acceptRequest(request.id, user!.uid, user.name);
+                      if (user != null && request.id != null) {
+                        // --- تصحيح: استخدام الدالة والخصائص الصحيحة ---
+                        requestProvider.acceptExistingRequest(request.id!, user);
+                      }
                     },
                     child: const Text('قبول'),
                   )
