@@ -8,10 +8,7 @@ import '../../data/cities_data.dart';
 import '../../widgets/custom_button.dart';
 import 'package:share_plus/share_plus.dart';
 import 'settings_screen.dart';
-
-// --- بداية التعديل 1: استيراد ويدجت إعلان البانر ---
 import '../../widgets/banner_ad_widget.dart';
-// --- نهاية التعديل 1 ---
 
 class AvailableCraftsmenScreen extends StatefulWidget {
   const AvailableCraftsmenScreen({super.key});
@@ -29,12 +26,14 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // --- تصحيح: التأكد من أن الدالة لا تتطلب معاملات ---
       Provider.of<CraftsmenProvider>(context, listen: false).fetchCraftsmen();
     });
   }
 
   void _applyFilters() {
-    Provider.of<CraftsmenProvider>(context, listen: false).fetchCraftsmen(
+    // --- تصحيح: التأكد من أن الدالة تتلقى المعاملات الصحيحة ---
+    Provider.of<CraftsmenProvider>(context, listen: false).filterCraftsmen(
       profession: _selectedProfession,
       city: _selectedCity,
     );
@@ -58,7 +57,7 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: Theme.of(context).inputDecorationTheme.fillColor ?? Colors.grey[200],
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: DropdownButtonHideUnderline(
@@ -88,9 +87,12 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
   @override
   Widget build(BuildContext context) {
     final craftsmenProvider = Provider.of<CraftsmenProvider>(context);
-    final List<String> professions = CitiesData.getProfessions();
-    final List<String> regions = CitiesData.getRegions('المغرب');
-    final List<String> cities = _selectedRegion != null ? CitiesData.getCities('المغرب', _selectedRegion!) : [];
+    // --- تصحيح: التأكد من وجود الدالة ---
+    final List<String> professions = CitiesData.professions;
+    final List<String> regions = CitiesData.regions['المغرب']?.keys.toList() ?? [];
+    final List<String> cities = (_selectedRegion != null && CitiesData.regions['المغرب']?[_selectedRegion] != null)
+        ? CitiesData.regions['المغرب']![_selectedRegion]!
+        : [];
 
     return Scaffold(
       appBar: AppBar(
@@ -115,10 +117,8 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
           ),
         ],
       ),
-      // --- بداية التعديل 2: تغيير هيكل body لإضافة البانر ---
       body: Column(
         children: [
-          // العنصر الأول: المحتوى الأصلي للشاشة داخل Expanded
           Expanded(
             child: Column(
               children: [
@@ -213,11 +213,9 @@ class _AvailableCraftsmenScreenState extends State<AvailableCraftsmenScreen> {
               ],
             ),
           ),
-          // العنصر الثاني: إعلان البانر الخاص بهذه الشاشة
           const BannerAdWidget(screenName: 'AvailableCraftsmenScreen'),
         ],
       ),
-      // --- نهاية التعديل 2 ---
     );
   }
 }
