@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
-import 'settings_screen.dart'; // استيراد شاشة الإعدادات
+import '../../providers/store_provider.dart';
+import '../../models/store_model.dart';
+import 'settings_screen.dart';
+
+// --- بداية التعديل 1: استيراد ويدجت إعلان البانر ---
+import '../../widgets/banner_ad_widget.dart';
+// --- نهاية التعديل 1 ---
 
 class StoresListScreen extends StatefulWidget {
   const StoresListScreen({super.key});
@@ -12,27 +19,28 @@ class StoresListScreen extends StatefulWidget {
 }
 
 class _StoresListScreenState extends State<StoresListScreen> {
-  // بيانات وهمية مؤقتة لعرض التصميم
-  final List<Map<String, dynamic>> _stores = [
-    {'name': 'متجر مواد البناء الحديثة', 'owner': 'أحمد علي', 'image': 'assets/images/placeholder_image.png'},
-    {'name': 'الورشة الفنية للأخشاب', 'owner': 'فاطمة الزهراء', 'image': 'assets/images/placeholder_image.png'},
-    {'name': 'معرض الأصباغ والديكور', 'owner': 'يوسف إبراهيم', 'image': 'assets/images/placeholder_image.png'},
-    {'name': 'أدوات السباكة والكهرباء', 'owner': 'خالد منصور', 'image': 'assets/images/placeholder_image.png'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<StoreProvider>(context, listen: false).fetchAllStores();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final storeProvider = Provider.of<StoreProvider>(context);
+
     return Scaffold(
-      // --- بداية التعديل: إضافة AppBar مع أيقونات ---
       appBar: AppBar(
-        title: const Text(AppStrings.storesLabel),
+        title: const Text(AppStrings.storeLabel),
         backgroundColor: AppColors.primaryColor,
-        automaticallyImplyLeading: false, // لإخفاء سهم الرجوع
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
-              Share.share('تصفح أفضل متاجر الحرفيين والموردين على تطبيق الصانع الحرفي! [رابط التطبيق]');
+              Share.share('تصفح أفضل المتاجر في تطبيق الصانع الحرفي! [رابط التطبيق]');
             },
           ),
           IconButton(
@@ -46,41 +54,42 @@ class _StoresListScreenState extends State<StoresListScreen> {
           ),
         ],
       ),
-      // --- نهاية التعديل ---
-      body: ListView.builder(
-        itemCount: _stores.length,
-        itemBuilder: (context, index) {
-          final store = _stores[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(12),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.asset(
-                  store['image'],
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              title: Text(
-                store['name'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text('صاحب المتجر: ${store['owner']}'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                // TODO: الانتقال إلى صفحة المتجر العامة لعرض المنتجات
-              },
-            ),
-          );
-        },
+      // --- بداية التعديل 2: تغيير هيكل body لإضافة البانر ---
+      body: Column(
+        children: [
+          Expanded(
+            child: storeProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : storeProvider.allStores.isEmpty
+                    ? const Center(child: Text('لا توجد متاجر متاحة حاليًا.'))
+                    : ListView.builder(
+                        itemCount: storeProvider.allStores.length,
+                        itemBuilder: (context, index) {
+                          final StoreModel store = storeProvider.allStores[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: store.imageUrl.isNotEmpty
+                                    ? NetworkImage(store.imageUrl)
+                                    : const AssetImage('assets/images/placeholder_icon.png') as ImageProvider,
+                              ),
+                              title: Text(store.name),
+                              subtitle: Text(store.specialization),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () {
+                                // TODO: الانتقال إلى صفحة تفاصيل المتجر
+                              },
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          // العنصر الثاني: إعلان البانر الخاص بهذه الشاشة
+          const BannerAdWidget(screenName: 'StoresListScreen'),
+        ],
       ),
+      // --- نهاية التعديل 2 ---
     );
   }
 }
