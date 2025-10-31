@@ -7,9 +7,6 @@ import '../../widgets/decorative_background.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/ad_service.dart';
 
-// تم إزالة استيراد banner_ad_widget.dart
-
-// استيراد جميع الشاشات الرئيسية
 import 'available_craftsmen_screen.dart';
 import 'requests_screen.dart';
 import 'chats_screen.dart';
@@ -32,16 +29,12 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     return true;
   }
 
+  // --- تصحيح: استخدام الدالة المدمجة في UserModel ---
   String _normalizeUserType(String userType) {
-    final normalized = userType.trim().toLowerCase();
-    if (normalized == 'client' || normalized == 'عميل') {
-      return AppStrings.client;
-    } else if (normalized == 'craftsman' || normalized == 'حرفي') {
-      return AppStrings.craftsman;
-    } else if (normalized == 'supplier' || normalized == 'مورد') {
-      return AppStrings.supplier;
-    }
-    return 'عميل';
+    return UserModel.fromFirestore(
+      // بناء كائن وهمي فقط لاستخدام الدالة
+      {'userType': userType} as dynamic,
+    ).userType;
   }
 
   void _onItemTapped(int index) {
@@ -52,7 +45,7 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
 
   List<BottomNavigationBarItem> _getNavItems(String userType) {
     List<BottomNavigationBarItem> items = [
-      if (userType == AppStrings.client)
+      if (userType == 'عميل')
         const BottomNavigationBarItem(icon: Icon(Icons.people_outline), activeIcon: Icon(Icons.people), label: AppStrings.craftsmenLabel)
       else
         const BottomNavigationBarItem(icon: Icon(Icons.list_alt_outlined), activeIcon: Icon(Icons.list_alt), label: AppStrings.requestsLabel),
@@ -65,11 +58,11 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
   }
 
   List<Widget> _getScreens(String userType) {
-    if (userType == AppStrings.client) {
+    if (userType == 'عميل') {
       return const [ AvailableCraftsmenScreen(), StoresListScreen(), ChatsScreen(), ProfileScreen(), ];
-    } else if (userType == AppStrings.craftsman) {
+    } else if (userType == 'حرفي') {
       return const [ RequestsScreen(), StoresListScreen(), ChatsScreen(), ProfileScreen(), ];
-    } else if (userType == AppStrings.supplier) {
+    } else if (userType == 'مورد') {
       return const [ RequestsScreen(), StoreManagementScreen(), ChatsScreen(), ProfileScreen(), ];
     }
     return [ Center(child: Text('نوع مستخدم غير معروف: $userType')) ];
@@ -84,7 +77,7 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     
-    final normalizedUserType = _normalizeUserType(user.userType);
+    final normalizedUserType = user.userType; // UserModel يقوم بالتوحيد الآن
     final navItems = _getNavItems(normalizedUserType);
     final screens = _getScreens(normalizedUserType);
 
@@ -95,7 +88,6 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        // تم إعادة هيكل body إلى حالته الأصلية بدون البانر الثابت
         body: Stack(
           children: [
             if (themeProvider.showBackgroundPattern)
@@ -120,3 +112,4 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
     );
   }
 }
+S
