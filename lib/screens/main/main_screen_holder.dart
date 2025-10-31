@@ -4,10 +4,10 @@ import '../../constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/user_model.dart';
 import '../../widgets/decorative_background.dart';
-
-// --- بداية التعديل 1: استيراد ThemeProvider ---
 import '../../providers/theme_provider.dart';
-// --- نهاية التعديل 1 ---
+import '../../services/ad_service.dart';
+
+// تم إزالة استيراد banner_ad_widget.dart
 
 // استيراد جميع الشاشات الرئيسية
 import 'available_craftsmen_screen.dart';
@@ -26,6 +26,11 @@ class MainScreenHolder extends StatefulWidget {
 
 class _MainScreenHolderState extends State<MainScreenHolder> {
   int _selectedIndex = 0;
+
+  Future<bool> _onWillPop() async {
+    AdService.showInterstitialAdOnExit();
+    return true;
+  }
 
   String _normalizeUserType(String userType) {
     final normalized = userType.trim().toLowerCase();
@@ -61,43 +66,22 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
 
   List<Widget> _getScreens(String userType) {
     if (userType == AppStrings.client) {
-      return const [
-        AvailableCraftsmenScreen(),
-        StoresListScreen(),
-        ChatsScreen(),
-        ProfileScreen(),
-      ];
+      return const [ AvailableCraftsmenScreen(), StoresListScreen(), ChatsScreen(), ProfileScreen(), ];
     } else if (userType == AppStrings.craftsman) {
-      return const [
-        RequestsScreen(),
-        StoresListScreen(),
-        ChatsScreen(),
-        ProfileScreen(),
-      ];
+      return const [ RequestsScreen(), StoresListScreen(), ChatsScreen(), ProfileScreen(), ];
     } else if (userType == AppStrings.supplier) {
-      return const [
-        RequestsScreen(),
-        StoreManagementScreen(),
-        ChatsScreen(),
-        ProfileScreen(),
-      ];
+      return const [ RequestsScreen(), StoreManagementScreen(), ChatsScreen(), ProfileScreen(), ];
     }
-    return [
-      Center(child: Text('نوع مستخدم غير معروف: $userType'))
-    ];
+    return [ Center(child: Text('نوع مستخدم غير معروف: $userType')) ];
   }
 
   @override
   Widget build(BuildContext context) {
     final UserModel? user = Provider.of<AuthProvider>(context).user;
-    // --- بداية التعديل 2: الوصول إلى ThemeProvider ---
     final themeProvider = Provider.of<ThemeProvider>(context);
-    // --- نهاية التعديل 2 ---
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     
     final normalizedUserType = _normalizeUserType(user.userType);
@@ -108,30 +92,30 @@ class _MainScreenHolderState extends State<MainScreenHolder> {
       _selectedIndex = 0;
     }
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // --- بداية التعديل 3: جعل الخلفية مشروطة ---
-          // لن تظهر الخلفية إلا إذا كان الخيار مفعلاً في الإعدادات
-          if (themeProvider.showBackgroundPattern)
-            const DecorativeBackground(),
-          // --- نهاية التعديل 3 ---
-
-          IndexedStack(
-            index: _selectedIndex,
-            children: screens,
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: navItems,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Theme.of(context).cardColor,
-        showUnselectedLabels: true,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        // تم إعادة هيكل body إلى حالته الأصلية بدون البانر الثابت
+        body: Stack(
+          children: [
+            if (themeProvider.showBackgroundPattern)
+              const DecorativeBackground(),
+            IndexedStack(
+              index: _selectedIndex,
+              children: screens,
+            ),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          items: navItems,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey,
+          backgroundColor: Theme.of(context).cardColor,
+          showUnselectedLabels: true,
+        ),
       ),
     );
   }
