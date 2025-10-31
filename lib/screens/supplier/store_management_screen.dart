@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:upgrader/upgrader.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
-import '../../models/store_item_model.dart';
-import '../../providers/store_provider.dart';
 import '../../providers/auth_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import '../main/settings_screen.dart'; // استيراد شاشة الإعدادات
+import '../../providers/store_provider.dart';
+import '../../models/store_model.dart';
+import '../../widgets/custom_button.dart';
+import '../main/settings_screen.dart';
+
+// --- بداية التعديل 1: استيراد ويدجت إعلان البانر ---
+import '../../widgets/banner_ad_widget.dart';
+// --- نهاية التعديل 1 ---
 
 class StoreManagementScreen extends StatefulWidget {
   const StoreManagementScreen({super.key});
@@ -17,151 +21,53 @@ class StoreManagementScreen extends StatefulWidget {
 }
 
 class _StoreManagementScreenState extends State<StoreManagementScreen> {
+  final _formKey = GlobalKey<FormState>();
+  String _storeName = '';
+  String _storeSpecialization = '';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = Provider.of<AuthProvider>(context, listen: false).user;
       if (user != null) {
-        Provider.of<StoreProvider>(context, listen: false).fetchStoreItems(user.id);
+        Provider.of<StoreProvider>(context, listen: false).fetchStore(user.uid);
       }
     });
   }
 
-  // دالة لعرض نافذة إضافة/تعديل المنتج
-  void _showItemDialog({StoreItemModel? item}) {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    
-    // التحقق من حد المنتجات المجانية قبل فتح نافذة إضافة منتج جديد
-    if (item == null && storeProvider.items.length >= 4) {
-      _showUpgradeDialog();
-      return;
-    }
-
-    final _nameController = TextEditingController(text: item?.name);
-    final _priceController = TextEditingController(text: item?.price.toString());
-    final _descriptionController = TextEditingController(text: item?.description); // حقل الوصف
-    final _formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(item == null ? 'إضافة منتج جديد' : 'تعديل المنتج'),
-          content: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'اسم المنتج'),
-                    validator: (value) => value!.isEmpty ? 'الرجاء إدخال اسم المنتج' : null,
-                  ),
-                  TextFormField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(labelText: 'السعر'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) => value!.isEmpty ? 'الرجاء إدخال السعر' : null,
-                  ),
-                  TextFormField( // حقل الوصف
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: 'وصف المنتج'),
-                    maxLines: 3,
-                    validator: (value) => value!.isEmpty ? 'الرجاء إدخال وصف للمنتج' : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  final newItem = StoreItemModel(
-                    id: item?.id ?? '', // سيتم إنشاء ID جديد في Firebase إذا كان فارغًا
-                    name: _nameController.text,
-                    price: double.parse(_priceController.text),
-                    description: _descriptionController.text, // حفظ الوصف
-                    imageUrl: item?.imageUrl ?? '', // الاحتفاظ بالصورة الحالية أو تركها فارغة
-                    supplierId: user!.id,
-                  );
-
-                  if (item == null) {
-                    storeProvider.addStoreItem(newItem);
-                  } else {
-                    storeProvider.updateStoreItem(newItem);
-                  }
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('حفظ'),
-            ),
-          ],
+  void _saveStore() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      final user = Provider.of<AuthProvider>(context, listen: false).user;
+      if (user != null) {
+        final store = StoreModel(
+          id: user.uid, // Using user ID as store ID
+          name: _storeName,
+          specialization: _storeSpecialization,
+          ownerId: user.uid,
+          imageUrl: Provider.of<StoreProvider>(context, listen: false).store?.imageUrl ?? '',
         );
-      },
-    );
-  }
-
-  // دالة لعرض نافذة الترقية
-  void _showUpgradeDialog() {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    String price = '\$7 USD'; // السعر الافتراضي
-    if (user != null) {
-      switch (user.country) {
-        case 'المغرب':
-          price = '75 MAD';
-          break;
-        case 'الجزائر':
-          price = '1200 DZD';
-          break;
-        case 'تونس':
-          price = '25 TND';
-          break;
+        Provider.of<StoreProvider>(context, listen: false).createOrUpdateStore(store);
       }
     }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('الوصول للحد الأقصى'),
-        content: Text('لقد وصلت إلى الحد الأقصى للمنتجات المسموح بها في الباقة المجانية (4 منتجات). قم بترقية حسابك لإضافة عدد غير محدود من المنتجات مقابل $price شهريًا.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('لاحقًا'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Implement payment logic
-              Navigator.of(context).pop();
-            },
-            child: const Text('الترقية الآن'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // --- بداية التعديل: إضافة Scaffold و AppBar ---
+    final storeProvider = Provider.of<StoreProvider>(context);
+    final store = storeProvider.store;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.storeManagement),
+        title: const Text(AppStrings.manageStoreLabel),
         backgroundColor: AppColors.primaryColor,
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
-              Share.share('تصفح متجري على تطبيق الصانع الحرفي! [رابط المتجر]');
+              Share.share('إدارة متجرك بسهولة مع تطبيق الصانع الحرفي! [رابط التطبيق]');
             },
           ),
           IconButton(
@@ -175,58 +81,47 @@ class _StoreManagementScreenState extends State<StoreManagementScreen> {
           ),
         ],
       ),
-      body: UpgradeAlert(
-        upgrader: Upgrader(
-          dialogStyle: UpgradeDialogStyle.material,
-          canDismissDialog: false,
-          showLater: true,
-          showIgnore: false,
-        ),
-        child: Consumer<StoreProvider>(
-          builder: (context, storeProvider, child) {
-            if (storeProvider.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (storeProvider.items.isEmpty) {
-              return const Center(child: Text('متجرك فارغ. قم بإضافة أول منتج لك!'));
-            }
-            return ListView.builder(
-              itemCount: storeProvider.items.length,
-              itemBuilder: (context, index) {
-                final item = storeProvider.items[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: ListTile(
-                    leading: const Icon(Icons.inventory_2_outlined, color: AppColors.primaryColor),
-                    title: Text(item.name),
-                    subtitle: Text('${item.price} ${AppStrings.currency}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _showItemDialog(item: item),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => storeProvider.deleteStoreItem(item.id),
-                        ),
-                      ],
+      // --- بداية التعديل 2: تغيير هيكل body لإضافة البانر ---
+      body: Column(
+        children: [
+          Expanded(
+            child: storeProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            initialValue: store?.name,
+                            decoration: const InputDecoration(labelText: 'اسم المتجر'),
+                            validator: (value) => value!.isEmpty ? 'الرجاء إدخال اسم المتجر' : null,
+                            onSaved: (value) => _storeName = value!,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            initialValue: store?.specialization,
+                            decoration: const InputDecoration(labelText: 'تخصص المتجر'),
+                            validator: (value) => value!.isEmpty ? 'الرجاء إدخال تخصص المتجر' : null,
+                            onSaved: (value) => _storeSpecialization = value!,
+                          ),
+                          const SizedBox(height: 32),
+                          CustomButton(
+                            text: 'حفظ التغييرات',
+                            onPressed: _saveStore,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                );
-              },
-            );
-          },
-        ),
+          ),
+          // العنصر الثاني: إعلان البانر الخاص بهذه الشاشة
+          const BannerAdWidget(screenName: 'StoreManagementScreen'),
+        ],
       ),
-      // هذا الزر سيظهر الآن بشكل صحيح
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showItemDialog(),
-        backgroundColor: AppColors.primaryColor,
-        child: const Icon(Icons.add),
-      ),
+      // --- نهاية التعديل 2 ---
     );
-    // --- نهاية التعديل ---
   }
 }
