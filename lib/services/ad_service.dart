@@ -87,4 +87,5 @@ class AdService {
     _interstitialAd = null;
     _isInterstitialReady = false;
   }
+  
 }
