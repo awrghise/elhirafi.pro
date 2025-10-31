@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
-import '../auth/register_screen.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../models/user_model.dart';
-// --- بداية الإضافة 1 ---
-import '../../providers/profession_provider.dart';
-// --- نهاية الإضافة 1 ---
+import '../auth/register_screen.dart';
+import 'settings_screen.dart';
+
+// --- بداية التعديل 1: استيراد ويدجت إعلان البانر ---
+import '../../widgets/banner_ad_widget.dart';
+// --- نهاية التعديل 1 ---
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -15,99 +19,84 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final UserModel? user = authProvider.user;
-
-    // --- بداية الإضافة 2 ---
-    // جلب ProfessionProvider للوصول إلى بيانات المهن
-    final professionProvider = Provider.of<ProfessionProvider>(context, listen: false);
-    // --- نهاية الإضافة 2 ---
-
-    if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('لم يتم تحميل بيانات المستخدم')),
-      );
-    }
+    final user = authProvider.user;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.profile),
+        title: const Text(AppStrings.profileLabel),
         backgroundColor: AppColors.primaryColor,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.share_outlined),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => RegisterScreen(isEditing: true, userToEdit: user),
-                ),
+              Share.share('انضم إلى مجتمع الحرفيين والعملاء في تطبيق الصانع الحرفي! [رابط التطبيق]');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Center(
-              child: CircleAvatar(
-                radius: 60,
-                backgroundImage: user.profileImageUrl.isNotEmpty
-                    ? NetworkImage(user.profileImageUrl)
-                    : null,
-                child: user.profileImageUrl.isEmpty
-                    ? Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 48, color: Colors.white),
-                      )
-                    : null,
-                backgroundColor: AppColors.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(user.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(user.email, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 24),
-            const Divider(),
-            _buildInfoTile(Icons.phone, 'رقم الهاتف', user.phoneNumber),
-            _buildInfoTile(Icons.person_outline, 'نوع الحساب', user.userType),
-            if (user.userType == AppStrings.craftsman) ...[
-              // --- بداية التعديل ---
-              // استخدام الـ provider لترجمة اسم المهنة
-              _buildInfoTile(
-                Icons.work,
-                'المهنة',
-                professionProvider.getLocalizedProfessionName(user.profession, 'AR'),
-              ),
-              // --- نهاية التعديل ---
-              _buildInfoTile(Icons.location_city, 'مدينة العمل الأساسية', user.primaryWorkCity),
-              _buildInfoTile(Icons.notifications_active, 'مدن التنبيهات', user.subscribedCities.join(', ')),
-            ],
-            const Divider(),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Provider.of<AuthProvider>(context, listen: false).signOut();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('تسجيل الخروج'),
-            ),
-          ],
-        ),
+      // --- بداية التعديل 2: تغيير هيكل body لإضافة البانر ---
+      body: Column(
+        children: [
+          Expanded(
+            child: user == null
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: user.profileImageUrl.isNotEmpty
+                              ? NetworkImage(user.profileImageUrl)
+                              : const AssetImage('assets/images/placeholder_icon.png') as ImageProvider,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(user.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(user.email, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Text('نوع الحساب: ${user.userType}', style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 24),
+                        ListTile(
+                          leading: const Icon(Icons.edit),
+                          title: const Text('تعديل الملف الشخصي'),
+                          trailing: const Icon(Icons.arrow_forward_ios),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RegisterScreen(isEditing: true)),
+                            );
+                          },
+                        ),
+                        const Divider(),
+                        ListTile(
+                          leading: const Icon(Icons.logout, color: Colors.red),
+                          title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
+                          onTap: () async {
+                            await authProvider.signOut();
+                            // The AuthWrapper in main.dart will handle navigation to LoginScreen
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          // العنصر الثاني: إعلان البانر الخاص بهذه الشاشة
+          const BannerAdWidget(screenName: 'ProfileScreen'),
+        ],
       ),
-    );
-  }
-
-  Widget _buildInfoTile(IconData icon, String title, String subtitle) {
-    if (subtitle.isEmpty) return const SizedBox.shrink();
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryColor),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 16)),
+      // --- نهاية التعديل 2 ---
     );
   }
 }
